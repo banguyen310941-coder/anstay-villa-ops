@@ -16,19 +16,23 @@ import webhook from '../../server/v1/webhook.js';
 
 const ROUTES={adapters,ari,availability,cancellations,catalog,dispatch,health,hold,ical,outbox,payouts,quote,reservations,search,webhook};
 
+function routeName(req){
+  const raw=req.query?.path;
+  let path=Array.isArray(raw)?raw.join('/'):String(raw||'');
+  if(!path){
+    const pathname=String(req.url||'').split('?')[0];
+    path=pathname.replace(/^\/api\/v1\/?/,'');
+  }
+  return path.replace(/^\/+|\/+$/g,'').split('/')[0];
+}
 function send404(res,path){
   res.statusCode=404;
   res.setHeader('Content-Type','application/json; charset=utf-8');
   res.setHeader('Cache-Control','no-store');
   res.end(JSON.stringify({error:'route_not_found',path,available:Object.keys(ROUTES)}));
 }
-
 export default async function gatewayRouter(req,res){
-  const raw=req.query?.path;
-  const path=(Array.isArray(raw)?raw.join('/'):String(raw||''))
-    .replace(/^\/+|\/+$/g,'');
-  const [route]=path.split('/');
-  const fn=ROUTES[route];
-  if(!fn)return send404(res,path);
+  const route=routeName(req),fn=ROUTES[route];
+  if(!fn)return send404(res,route);
   return fn(req,res);
 }
