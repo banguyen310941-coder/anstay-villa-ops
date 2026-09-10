@@ -1,6 +1,6 @@
 import { createClient } from '@neondatabase/neon-js';
 
-const parts=['/parts/main-0.txt','/parts/main-1.txt','/parts/main-2.txt','/parts/main-3a.txt','/parts/main-3b.txt','/parts/main-4a.txt','/parts/main-4b.txt','/parts/main-5.txt','/parts/main-6.txt','/parts/main-7.txt','/parts/main-8.txt','/parts/main-9.txt','/parts/main-10.txt','/parts/main-11.txt','/parts/main-12.txt','/parts/main-13.txt','/parts/main-14.txt','/parts/main-15.txt','/parts/main-16.txt','/parts/main-17.txt','/parts/main-18.txt'];
+const parts=['/parts/main-0.txt','/parts/main-1.txt','/parts/main-2.txt','/parts/main-3a.txt','/parts/main-3b.txt','/parts/main-4a.txt','/parts/main-4b.txt','/parts/main-5.txt','/parts/main-6.txt','/parts/main-7.txt','/parts/main-8.txt','/parts/main-9.txt','/parts/main-10.txt','/parts/main-11.txt','/parts/main-12.txt','/parts/main-13.txt','/parts/main-14.txt','/parts/main-15.txt','/parts/main-16.txt','/parts/main-17.txt','/parts/main-18.txt','/parts/main-19.txt'];
 try {
   const responses=await Promise.all(parts.map(url=>fetch(url,{cache:'no-store'})));
   for(const r of responses) if(!r.ok) throw new Error(`Không tải được ${r.url}: ${r.status}`);
