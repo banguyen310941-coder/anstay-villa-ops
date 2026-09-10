@@ -1,1 +1,1 @@
-{"name":"anstay-villa-ops","version":"0.3.0","private":true,"scripts":{"dev":"python3 -m http.server 3000","build":"echo Static MVP"}}
+{"name":"anstay-villa-ops","version":"0.4.0","private":true,"scripts":{"dev":"python3 -m http.server 3000","build":"echo Static MVP v0.4"}}
