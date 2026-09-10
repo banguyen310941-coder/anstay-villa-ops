@@ -1,5 +1,7 @@
 # ANSTAY v0.7 — Integration Gateway
 
+Production gateway: `https://anstay-channel-gateway.vercel.app`
+
 ## Mục tiêu
 
 Mở lớp tích hợp có version để website ANSTAY, channel manager hoặc adapter OTA có thể kết nối mà không phụ thuộc vào giao diện quản trị nội bộ.
@@ -7,7 +9,7 @@ Mở lớp tích hợp có version để website ANSTAY, channel manager hoặc 
 ## Nguyên tắc
 
 - Không đưa `DATABASE_URL`, API key hoặc token OTA vào frontend/GitHub.
-- API tích hợp chạy server-to-server tại `/api/v1/*`.
+- API tích hợp chạy server-to-server tại `/api/v1/*` trên service `anstay-channel-gateway` tách riêng khỏi app quản trị.
 - Cổng production mặc định ở trạng thái **sealed** cho tới khi secret được nạp vào environment của Vercel.
 - Booking ngoài hệ thống dùng mã idempotent dạng `EXT-<CHANNEL>-...`; cùng một `channel + external_reservation_id` không tạo booking trùng.
 - Quy tắc chống trùng lịch và khóa tháng tiếp tục do PostgreSQL trigger hiện tại kiểm soát.
@@ -35,7 +37,7 @@ Mở lớp tích hợp có version để website ANSTAY, channel manager hoặc 
 - `ANSTAY_ICAL_TOKEN`: token dài, ngẫu nhiên cho feed iCal.
 - `ANSTAY_ALLOWED_ORIGINS`: danh sách origin được phép gọi từ browser nếu thật sự cần; mặc định không mở CORS rộng.
 
-Không commit các giá trị này vào repository.
+Không commit các giá trị này vào repository. Cho tới khi các secret được nạp, gateway trả `gateway_sealed` thay vì mở dữ liệu ra internet.
 
 ## Event chuẩn hóa cho adapter OTA
 
@@ -64,6 +66,8 @@ Các event v1: `reservation.created`, `reservation.updated`, `reservation.cancel
 ## Adapter OTA tương lai
 
 Lớp gateway không giả định API riêng của Booking.com/Airbnb/Agoda/Expedia/Traveloka giống nhau. Khi ANSTAY có tài khoản partner/credential và tài liệu kỹ thuật chính thức của từng kênh, tạo adapter riêng ở phía ngoài rồi map dữ liệu vào contract chuẩn trên. Cách này tránh sửa core Booking mỗi lần đổi OTA.
+
+Mỗi adapter sau này có thể triển khai xác thực/chữ ký riêng của nhà cung cấp, property/rate-plan mapping, retry, audit và outbound ARI mà không làm thay đổi contract core `/api/v1`.
 
 ## Website ANSTAY
 
