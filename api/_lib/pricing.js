@@ -19,8 +19,8 @@ export async function resolvePricing(sql,{villaCode,from,to,channelCode='WEBSITE
   const rateMap=new Map(rates.map(r=>[r.stay_date,r]));
   const span=dateSpanInclusive(from,to),inventory=[];
   for(let i=0;i<span;i++){
-    const date=addDays(from,i),r=rateMap.get(date),blocked=bookings.some(b=>date>=b.check_in&&date<b.check_out),published=!!r?.published,stopSell=!!r?.stop_sell,rate=published?channelRate(r?.base_rate,mapping.rate_adjustment_pct,mapping.rate_adjustment_flat):null;
-    inventory.push({date,units_available:blocked?0:1,blocked_by_booking:blocked,stop_sell:stopSell,published,closed_to_arrival:!!r?.closed_to_arrival,closed_to_departure:!!r?.closed_to_departure,min_stay:Number(r?.min_stay||plan.default_min_stay||1),base_rate:r?.base_rate==null?null:Number(r.base_rate),rate,currency:plan.currency||channel.currency||'VND',sellable:!blocked&&!stopSell&&published&&rate!=null});
+    const date=addDays(from,i),r=rateMap.get(date),blocked=bookings.some(b=>date>=b.check_in&&date<b.check_out),published=!!r?.published,stopSell=!!r?.stop_sell,rate=published?channelRate(r?.base_rate,mapping.rate_adjustment_pct,mapping.rate_adjustment_flat):null,sellableRate=rate!=null&&rate>0;
+    inventory.push({date,units_available:blocked?0:1,blocked_by_booking:blocked,stop_sell:stopSell,published,closed_to_arrival:!!r?.closed_to_arrival,closed_to_departure:!!r?.closed_to_departure,min_stay:Number(r?.min_stay||plan.default_min_stay||1),base_rate:r?.base_rate==null?null:Number(r.base_rate),rate:sellableRate?rate:null,currency:plan.currency||channel.currency||'VND',sellable:!blocked&&!stopSell&&published&&sellableRate});
   }
   const priced=inventory.filter(x=>x.rate!=null).length;
   return {villa,channel,plan,mapping,pricing_status:priced===inventory.length?'complete':priced?'partial':'missing',inventory};
