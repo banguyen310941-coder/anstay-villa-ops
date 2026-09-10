@@ -1,0 +1,42 @@
+D.channelEvents=D.channelEvents||[];
+const syncWebSalesRemote_v15=syncWebSalesRemote;
+syncWebSalesRemote=async function(){
+  await syncWebSalesRemote_v15();
+  if(MODE==='auth'){
+    const rows=await safeQ('channel_sync_events');
+    D.channelEvents=rows.map(x=>({id:+x.id,channelId:x.channel_id==null?null:+x.channel_id,villaId:x.villa_id==null?null:+x.villa_id,direction:x.direction,event:x.event_type,status:x.status,externalId:x.external_id||'',message:x.message||'',at:x.occurred_at})).sort((a,b)=>String(b.at).localeCompare(String(a.at)));
+  }
+};
+function otaSyncStats(c){
+  const maps=(D.channelMappings||[]).filter(m=>String(m.channelId)===String(c.id)&&m.active);
+  const ready=maps.filter(m=>m.externalProperty&&m.externalRoom).length;
+  const q=(D.channelOutbox||[]).filter(x=>x.channel===c.code);
+  return {maps:maps.length,ready,pending:q.filter(x=>x.status==='pending').length,waiting:q.filter(x=>x.status==='waiting_mapping').length,failed:q.filter(x=>x.status==='failed').length,sent:q.filter(x=>x.status==='sent').length};
+}
+function otaControlCard(){
+  const otas=(D.channels||[]).filter(c=>c.active&&c.type==='ota');
+  const rows=otas.map(c=>{const s=otaSyncStats(c),last=(D.channelEvents||[]).find(e=>String(e.channelId)===String(c.id)),canRetry=s.failed>0&&['admin','ops'].includes(ROLE);return `<tr><td><b>${esc(c.name)}</b><br><small>${esc(c.code)}</small></td><td>${s.ready}/${VILLAS.length}<br><small>${s.maps} mapping đang bật</small></td><td><span class="tag ${s.failed?'bad':s.pending?'info':s.waiting?'warning':'ok'}">${s.failed?`${s.failed} lỗi`:s.pending?`${s.pending} chờ gửi`:s.waiting?`${s.waiting} chờ mapping`:'Không có lỗi chờ xử lý'}</span><br><small>Đã gửi: ${s.sent}</small></td><td>${last?`${esc(last.direction)} · ${esc(last.event)}<br><small>${esc(last.status)} · ${String(last.at||'').slice(0,16).replace('T',' ')}</small>`:'—'}</td><td>${canRetry?`<button data-retry-channel="${esc(c.code)}">Gửi lại lỗi</button>`:'—'}</td></tr>`}).join('');
+  const totalReady=otas.reduce((n,c)=>n+otaSyncStats(c).ready,0),target=otas.length*VILLAS.length;
+  return `<div class="card" id="otaControlCard" style="margin-top:14px"><div class="row" style="justify-content:space-between;align-items:center"><div><h3>OTA Readiness & Sync Control</h3><p class="muted">Theo dõi mapping Property/Room ID và hàng đợi outbound. Chỉ sự kiện đủ mapping mới được đưa sang trạng thái chờ adapter gửi.</p></div><div class="actions"><span class="tag ${totalReady===target&&target?'ok':'warning'}">${totalReady}/${target||0} mapping OTA sẵn sàng</span><button id="openRatesFromOta">Giá & Kênh</button></div></div><div class="scroll"><table><tr><th>Kênh</th><th>Mapping sẵn sàng</th><th>Outbox</th><th>Sự kiện gần nhất</th><th></th></tr>${rows||'<tr><td colspan="5" class="empty">Chưa cấu hình OTA</td></tr>'}</table></div><div class="note warn" style="margin-top:12px"><b>Chưa gửi ra OTA thật:</b> adapter chỉ được bật khi ANSTAY có credential chính thức của từng OTA. Không lưu mật khẩu/API secret vào source hoặc trình duyệt.</div></div>`;
+}
+function bindOtaControl(){
+  $('openRatesFromOta')?.addEventListener('click',()=>{current='rates';renderNav();render()});
+  document.querySelectorAll('[data-retry-channel]').forEach(b=>b.onclick=async()=>{
+    const code=b.dataset.retryChannel,rows=(D.channelOutbox||[]).filter(x=>x.channel===code&&x.status==='failed');
+    if(!rows.length)return;
+    if(!confirm(`Đưa ${rows.length} sự kiện lỗi của ${code} về hàng chờ gửi lại?`))return;
+    try{
+      for(const x of rows){const {error}=await neon.rpc('admin_retry_channel_outbox',{p_outbox_id:x.id});if(error)throw new Error(dbError(error))}
+      toast(`Đã đưa ${rows.length} sự kiện về hàng chờ`);await syncWebSalesRemote();render();
+    }catch(e){console.error(e);toast(e?.message||String(e),true)}
+  });
+}
+const render_v15=render;
+render=function(){
+  render_v15();
+  if(current==='websales'){
+    const c=$('content');if(c&&!document.getElementById('otaControlCard'))c.insertAdjacentHTML('beforeend',otaControlCard());
+    bindOtaControl();
+  }
+};
+render();
