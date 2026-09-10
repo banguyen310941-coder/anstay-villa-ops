@@ -1,0 +1,28 @@
+
+D.depositPolicies=D.depositPolicies||[];
+const syncWebSalesRemote_v145=syncWebSalesRemote;
+syncWebSalesRemote=async function(){
+  await syncWebSalesRemote_v145();
+  if(MODE==='auth'){
+    const rows=await safeQ('villa_booking_policies','villa_id,deposit_policy_mode,deposit_policy_value,deposit_due_hours');
+    D.depositPolicies=rows.map(x=>({villa:vcode(x.villa_id),villaId:+x.villa_id,mode:x.deposit_policy_mode||'manual',value:x.deposit_policy_value==null?null:+x.deposit_policy_value,due:x.deposit_due_hours==null?null:+x.deposit_due_hours}));
+  }
+};
+function depositPolicyLabel(p){if(!p||p.mode==='manual')return 'Chốt thủ công từng yêu cầu';if(p.mode==='none')return 'Không yêu cầu cọc';if(p.mode==='fixed')return `Cọc cố định ${fmt(p.value||0)}`;if(p.mode==='percent_total')return `Cọc ${Number(p.value||0)}% tổng giá`;return p.mode}
+function depositPolicyCard(){
+  const rows=VILLAS.map(v=>{const p=D.depositPolicies.find(x=>x.villa===v.code)||{villa:v.code,villaId:v.id,mode:'manual',value:null,due:null};return `<tr><td><b>${esc(v.name)}</b></td><td>${esc(depositPolicyLabel(p))}</td><td>${p.due==null?'Không đặt hạn':p.due+' giờ sau khi gửi yêu cầu'}</td><td>${ROLE==='admin'?`<button data-deposit-policy="${v.id}">Sửa chính sách</button>`:'—'}</td></tr>`}).join('');
+  return `<div class="card" id="depositPolicyCard" style="margin-top:14px"><div class="row" style="justify-content:space-between;align-items:center"><div><h3>Chính sách tiền cọc theo villa</h3><p class="muted">Mặc định hiện tại là thủ công. Có thể chọn: không cọc, số tiền cố định hoặc % tổng giá. Không tự áp một mức cọc mới nếu chưa được quản trị cấu hình.</p></div><span class="tag info">${D.depositPolicies.length||VILLAS.length} villa</span></div><div class="scroll"><table><tr><th>Villa</th><th>Chính sách</th><th>Hạn cọc</th><th></th></tr>${rows}</table></div></div>`;
+}
+function bindDepositPolicies(){
+  document.querySelectorAll('[data-deposit-policy]').forEach(b=>b.onclick=async()=>{
+    const villaId=+b.dataset.depositPolicy,p=D.depositPolicies.find(x=>x.villaId===villaId),v=VILLAS.find(x=>+x.id===villaId);if(!v)return;
+    const mode=(prompt(`Chính sách cọc cho ${v.name}: manual | none | fixed | percent_total`,p?.mode||'manual')||'').trim().toLowerCase();if(!mode)return;
+    if(!['manual','none','fixed','percent_total'].includes(mode))return toast('Chính sách không hợp lệ',true);
+    let value=null;if(mode==='fixed'||mode==='percent_total'){const s=prompt(mode==='fixed'?'Số tiền cọc cố định (VND):':'Tỷ lệ cọc trên tổng giá (%):',p?.value==null?'':String(p.value));if(s===null)return;value=Number(s);if(!Number.isFinite(value)||value<0||(mode==='percent_total'&&value>100))return toast('Giá trị cọc không hợp lệ',true)}
+    const d=prompt('Hạn cọc sau khi gửi yêu cầu (giờ). Để trống nếu không đặt hạn:',p?.due==null?'':String(p.due));if(d===null)return;const due=d.trim()===''?null:Number(d);if(due!=null&&(!Number.isFinite(due)||due<0))return toast('Số giờ không hợp lệ',true);
+    try{const {error}=await neon.rpc('admin_set_villa_deposit_policy',{p_villa_id:villaId,p_mode:mode,p_value:value,p_due_hours:due});if(error)throw new Error(dbError(error));toast('Đã cập nhật chính sách cọc');await syncWebSalesRemote();render()}catch(e){console.error(e);toast(e?.message||String(e),true)}
+  });
+}
+const render_v145=render;
+render=function(){render_v145();if(current==='websales'){const c=$('content');if(c&&!document.getElementById('depositPolicyCard'))c.insertAdjacentHTML('beforeend',depositPolicyCard());bindDepositPolicies()}};
+render();
