@@ -1,0 +1,2 @@
+const resetToken=new URLSearchParams(location.search).get('token');if(resetToken){$('loginPane').classList.add('hidden');$('resetPane').classList.remove('hidden');$('authLead').textContent='Đặt mật khẩu mới cho tài khoản quản trị.'}
+D=loadLocal();applyAccess();render();checkSession();
