@@ -1,6 +1,6 @@
 # ANSTAY Villa Ops
 
-MVP v0.5 cho chuỗi villa ANSTAY / Resort Hội An.
+MVP v0.6 cho chuỗi villa ANSTAY / Resort Hội An.
 
 ## Production stack
 - Vercel: frontend Vite
@@ -27,11 +27,16 @@ MVP v0.5 cho chuỗi villa ANSTAY / Resort Hội An.
 ## Điểm danh
 Check-in / check-out production dùng PostgreSQL RPC để timestamp được lấy từ máy chủ. GPS được ghi cùng lần chấm công. Điều chỉnh công đi qua phiếu chờ duyệt.
 
-## Frontend source
-`loader.js` nạp client Neon và ghép các phần nguồn trong `public/parts/` để Vite bundle dependency NeonJS trong khi vẫn giữ source frontend đồng bộ qua GitHub connector.
-
 ## Local
 ```bash
 npm install
 npm run dev
 ```
+
+## v0.6
+- Lịch booking theo tháng + công suất villa.
+- Dashboard tách doanh thu booking, tiền thu và phải thu để tránh cộng trùng.
+- Xếp ca nhân viên; check-in kiểm tra lịch phân công.
+- GPS geofence theo từng villa, cấu hình tọa độ/bán kính từ app.
+- Nhân viên tự đăng ký Auth; admin liên kết email với employee + app role.
+- Đóng tháng: snapshot P&L theo villa và khóa booking/thu chi của tháng; admin có thể mở khóa.
