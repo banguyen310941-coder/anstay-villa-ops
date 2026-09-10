@@ -1,6 +1,6 @@
 # ANSTAY Villa Ops
 
-Phiên bản v1.1 cho chuỗi villa ANSTAY / Resort Hội An.
+Phiên bản v1.2 cho chuỗi villa ANSTAY / Resort Hội An.
 
 ## Production stack
 - Vercel: frontend Vite
@@ -8,11 +8,12 @@ Phiên bản v1.1 cho chuỗi villa ANSTAY / Resort Hội An.
 - Neon Auth: đăng nhập
 - Neon Data API: CRUD qua HTTPS
 - PostgreSQL RLS: phân quyền tại database
+- ANSTAY Integration Gateway: cổng versioned cho website/OTA
 
 ## Quyền
 - `admin`: toàn hệ thống
-- `sales`: CRM + booking
-- `ops`: booking + vận hành + nhân sự + kho
+- `sales`: CRM + booking + xem giá/kênh
+- `ops`: booking + vận hành + nhân sự + kho + quản lý giá/kênh
 - `housekeeping`: việc buồng phòng + điểm danh
 - `stock`: kho
 - `accounting`: tài chính + báo cáo
@@ -24,37 +25,37 @@ Phiên bản v1.1 cho chuỗi villa ANSTAY / Resort Hội An.
 - Nắng: thuê cố định 25.000.000 VND/tháng net.
 - SAM, Gió, Tim: sở hữu.
 
+## Price Engine + Channel Mapping v1.2
+- `rate_plans`: quản lý nhiều Rate Plan, mặc định có `BAR`.
+- `rate_calendar`: giá theo từng ngày, min stay, stop-sell, CTA/CTD và trạng thái nháp/phát hành.
+- Giá chỉ được Gateway trả ra ngoài khi `published=true`; giá 0 không được coi là sellable.
+- `sales_channels`: Direct, Website, Booking.com, Agoda, Airbnb, Traveloka.
+- `channel_mappings`: mapping villa/rate plan sang từng kênh, lưu external Property/Room/Rate Plan ID và điều chỉnh giá theo `%` hoặc số tiền cố định.
+- Direct + Website được tạo mapping nội bộ sẵn; OTA vẫn chờ ID/credential thật từ đối tác.
+- `villa_guest_surcharges`: tách phụ thu người lớn, trẻ 6–12, trẻ dưới 6 và cách tính `manual/per_stay/per_night`. Mặc định giữ `manual` để không tự cộng sai khi quy tắc chưa được xác nhận.
+- Bảng giá hiện có từ workbook ANSTAY được nạp vào database ở trạng thái **nháp**, không tự phát ra website/OTA.
+
+## Integration Gateway v1.2
+- `GET /api/v1/catalog`: villa + channel + rate plan + mapping.
+- `GET /api/v1/availability`: kiểm tra phòng trống ở mức kỳ lưu trú.
+- `GET /api/v1/ari`: availability + inventory + published rate + min stay + stop-sell/CTA/CTD theo ngày.
+- `GET /api/v1/quote`: website/channel hỏi báo giá 1–31 đêm trước khi tạo booking.
+- `POST/PATCH /api/v1/reservations`: tạo/cập nhật booking ngoài hệ thống theo idempotency key.
+- `POST /api/v1/cancellations`, `POST /api/v1/webhook`, `GET /api/v1/ical`.
+- Gateway có secret được sealed by default; không commit API key/DB password/OTA credential vào repository.
+
 ## Dòng tiền và doanh thu
 Booking là nguồn doanh thu; `booking_payments` là nguồn tiền thực thu. Giá gộp, giảm giá, hoàn tiền, hoa hồng OTA, thuế/phí, doanh thu ghi nhận và căn cứ chia chủ được lưu tách riêng để không cộng trùng hoặc dùng sai mục đích.
 
-## Housekeeping v1.1
-- Booking `confirmed`/`staying` tự sinh 3 việc: dọn trước check-in, kiểm minibar và dọn sau check-out.
-- Deadline housekeeping được lưu bằng `timestamptz` theo múi giờ `Asia/Ho_Chi_Minh`.
+## Housekeeping + Purchase Order v1.1
+- Booking `confirmed`/`staying` tự sinh dọn trước check-in, kiểm minibar và dọn sau check-out.
 - Task có ưu tiên, checklist, người phụ trách, trạng thái mở/đang làm/hoàn tất và kiểm tra đạt/làm lại.
-- Dashboard vận hành hiển thị việc quá hạn, đến hạn hôm nay và chưa phân công.
-- Khi booking hủy, việc chưa hoàn tất liên quan được chuyển sang `cancelled`.
+- Housekeeping worker chỉ thao tác việc được giao cho mình; Admin/Ops phân công và nghiệm thu.
+- Purchase Order: `draft` → `approved` → `ordered` → `received`; nhận hàng có thể tự nhập kho theo SKU.
+- PO đã duyệt có thể ghi công nợ sang Finance một lần để tránh cộng trùng forecast.
 
-## Kho & Purchase Order v1.1
-- Danh mục nhà cung cấp với điều khoản thanh toán.
-- Purchase Order gồm header + nhiều dòng hàng, có thể gắn trực tiếp SKU tồn kho.
-- Workflow: `draft` → `approved` → `ordered` → `received`.
-- Khi xác nhận nhận hàng, các dòng có SKU tự sinh `stock_movements` nhập kho.
-- PO đã duyệt có thể ghi công nợ sang `finance_transactions` đúng một lần bằng RPC `post_purchase_order_payable`.
-- PO đã duyệt nhưng chưa ghi công nợ và có hạn trả tháng tới được cộng vào forecast riêng để không bỏ sót; sau khi ghi AP thì forecast dùng `finance_transactions`, tránh cộng trùng.
-
-## Điểm danh
-Check-in / check-out production dùng PostgreSQL RPC để timestamp được lấy từ máy chủ. GPS được ghi cùng lần chấm công. Điều chỉnh công đi qua phiếu chờ duyệt.
-
-## Đóng tháng v1.0+
-- Chọn kỳ báo cáo độc lập với tháng hiện tại.
-- Control Center hiển thị doanh thu ghi nhận, tiền thực thu, phải thu, công suất và lợi nhuận đóng góp.
-- Checklist trước đóng tháng: booking chưa hoàn tất, giao dịch thu chưa đối soát, công nợ khách, hóa đơn/chứng từ, căn cứ chia chủ Nhàn và khoản chi đến hạn.
-- Hai lỗi chặn khóa tháng: booking chưa hoàn tất và tiền thu chưa đối soát.
-- Khi khóa tháng, PostgreSQL chụp `monthly_settlements` cho từng villa và `monthly_closures` cho toàn kỳ.
-- Nhàn lấy `owner_share_base` nếu đã cấu hình; nếu chưa có thì tạm dùng doanh thu phòng theo quy tắc hiện hành.
-- SOL và Nắng ghi nghĩa vụ thuê cố định theo tháng; SAM/Gió/Tim không phát sinh thuê/chia chủ.
-- Có theo dõi số tiền đã thanh toán đối soát, trạng thái chưa trả/trả một phần/đã trả và mã tham chiếu.
-- Dự chi tháng tới tách thuê cố định, công nợ có hạn trả, PO đã duyệt chưa ghi AP và nghĩa vụ settlement đã khóa nhưng chưa thanh toán.
+## Đóng tháng
+Control Center tách doanh thu ghi nhận, tiền thực thu, phải thu, chi phí, thuê/chia chủ và forecast. Khi khóa tháng, PostgreSQL chụp settlement từng villa và khóa sửa dữ liệu kỳ theo quy tắc hiện hành.
 
 ## Local
 ```bash
@@ -62,5 +63,4 @@ npm install
 npm run dev
 ```
 
-## Integration Gateway
-Đã mở API version `/api/v1` cho website/channel adapter: catalog, availability, ARI, reservation create/update/cancel, normalized webhook và iCal. Các cổng có secret đều sealed by default; không có secret nào được commit. Xem `docs/integrations.md` và `/api/openapi.json`.
+Xem thêm `docs/integrations.md`, `docs/v1.1-housekeeping-procurement.md`, `docs/v1.2-price-engine.md` và `/api/openapi.json`.
