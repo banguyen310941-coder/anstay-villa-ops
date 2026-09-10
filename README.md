@@ -1,31 +1,37 @@
 # ANSTAY Villa Ops
 
-MVP quản trị vận hành chuỗi villa ANSTAY / Resort Hội An.
+MVP v0.5 cho chuỗi villa ANSTAY / Resort Hội An.
 
-## Production
-- Vercel: https://anstay-villa-ops.vercel.app
-- GitHub: banguyen310941-coder/anstay-villa-ops
-- Database: Neon Postgres project `anstay-villa-ops`
-- Authentication: Neon Auth (Better Auth), trusted origin `anstay-villa-ops.vercel.app`
+## Production stack
+- Vercel: frontend Vite
+- Neon Postgres: dữ liệu vận hành
+- Neon Auth: đăng nhập
+- Neon Data API: CRUD qua HTTPS
+- PostgreSQL RLS: phân quyền tại database
 
-## Phiên bản v0.4
-- Dashboard theo villa và mô hình hợp đồng.
-- CRM pipeline.
-- Booking + chống trùng lịch.
-- Housekeeping / maintenance tasks.
-- Nhân viên, GPS check-in/out, phát hiện đi trễ.
-- Bảng công tháng theo nhân viên.
-- Phiếu điều chỉnh chấm công và luồng duyệt/từ chối.
-- Kho, nhập/xuất tồn.
-- Thu/chi, công nợ, hóa đơn.
-- P&L từng villa và dự chi tháng tới.
-- Lớp đăng nhập Neon Auth đã provision; bản demo cục bộ vẫn giữ để thử UI khi chưa bật đồng bộ dữ liệu từ trình duyệt.
+## Quyền
+- `admin`: toàn hệ thống
+- `sales`: CRM + booking
+- `ops`: booking + vận hành + nhân sự + kho
+- `housekeeping`: việc buồng phòng + điểm danh
+- `stock`: kho
+- `accounting`: tài chính + báo cáo
+- `employee`: điểm danh cá nhân
 
-## Quy tắc tài chính hiện tại
-- Nhàn: chia 50/50 trên doanh thu bán phòng; doanh thu khác không thuộc căn cứ chia.
-- SOL: thuê cố định net 50.000.000 VND/tháng.
-- Nắng: thuê cố định net 25.000.000 VND/tháng.
+## Nghiệp vụ villa
+- Nhàn: chia 50/50, căn cứ hiện tại chỉ doanh thu bán phòng.
+- SOL: thuê cố định 50.000.000 VND/tháng net.
+- Nắng: thuê cố định 25.000.000 VND/tháng net.
 - SAM, Gió, Tim: sở hữu.
 
-## An toàn dữ liệu
-Không lưu database connection string, mật khẩu hoặc token trong repository. Đồng bộ CRUD thật từ UI chỉ bật sau khi hoàn tất Data API/RLS/role policy.
+## Điểm danh
+Check-in / check-out production dùng PostgreSQL RPC để timestamp được lấy từ máy chủ. GPS được ghi cùng lần chấm công. Điều chỉnh công đi qua phiếu chờ duyệt.
+
+## Frontend source
+`loader.js` nạp client Neon và ghép các phần nguồn trong `public/parts/` để Vite bundle dependency NeonJS trong khi vẫn giữ source frontend đồng bộ qua GitHub connector.
+
+## Local
+```bash
+npm install
+npm run dev
+```
