@@ -2,5 +2,8 @@
   "buildCommand":"npm run build",
   "outputDirectory":"dist",
   "framework":"vite",
-  "rewrites":[{"source":"/booking","destination":"/booking.html"}]
+  "rewrites":[
+    {"source":"/booking","destination":"/booking.html"},
+    {"source":"/api/public/:path*","destination":"https://anstay-booking-engine.vercel.app/api/:path*"}
+  ]
 }
