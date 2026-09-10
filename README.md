@@ -1,6 +1,6 @@
 # ANSTAY Villa Ops
 
-Phiên bản v1.5 cho chuỗi villa ANSTAY / Resort Hội An.
+Phiên bản v1.6 cho chuỗi villa ANSTAY / Resort Hội An.
 
 ## Production stack
 - Vercel: frontend Vite
@@ -16,14 +16,19 @@ Phiên bản v1.5 cho chuỗi villa ANSTAY / Resort Hội An.
 - `ops`: booking + vận hành + nhân sự + kho + giá/kênh + block phòng
 - `housekeeping`: việc buồng phòng + điểm danh
 - `stock`: kho
-- `accounting`: tài chính + báo cáo
+- `accounting`: tài chính + báo cáo + đối soát OTA payout
 - `employee`: điểm danh cá nhân
 
-## Nghiệp vụ villa
-- Nhàn: chia 50/50, căn cứ hiện tại chỉ doanh thu bán phòng. Doanh thu dịch vụ không đưa vào căn cứ chia.
-- SOL: thuê cố định 50.000.000 VND/tháng net.
-- Nắng: thuê cố định 25.000.000 VND/tháng net.
-- SAM, Gió, Tim: sở hữu.
+## OTA Adapter + Payout Reconciliation v1.6
+- `channel_inbox_events`: lưu webhook inbound theo `channel + event_id`, chống xử lý lặp. Nếu OTA không có event ID thì Gateway tạo fingerprint SHA-256 từ payload.
+- `channel_reservations`: giữ liên kết bền vững giữa external reservation ID của OTA và booking ANSTAY để update/cancel/payout không phải đoán booking.
+- `/api/v1/adapters`: readiness của Booking.com, Agoda, Airbnb, Traveloka nhưng không lộ secret.
+- `/api/v1/dispatch`: gửi các event outbox đã đủ mapping qua adapter server-side khi credential được cấu hình.
+- `/api/v1/payouts`: nhận payout/remittance và từng booking line từ OTA/adapter.
+- `ota_payouts` + `ota_payout_lines`: tách gross, commission, phí, thuế/khấu trừ và net payout.
+- Khi đối soát, chỉ `net payout` thực nhận được ghi vào `booking_payments`; không cộng lại vào doanh thu và không tự thay đổi `recognized_revenue` hoặc `owner_share_base`.
+- App có bảng **Đối soát OTA Commission & Payout** trong `Website & OTA`, gồm unmatched lines, ghép booking thủ công, kiểm net và chốt đối soát theo quyền Admin/Accounting.
+- Adapter thật vẫn sealed cho tới khi có endpoint/credential chính thức của từng OTA.
 
 ## Website Booking + Deposit + OTA Sync v1.5
 - `website_booking_requests` giữ yêu cầu đặt villa trước khi trở thành booking thật.
@@ -63,9 +68,10 @@ Phiên bản v1.5 cho chuỗi villa ANSTAY / Resort Hội An.
 - `GET /api/v1/search`: tìm villa bán được theo kỳ lưu trú và số khách.
 - `GET /api/v1/quote`: báo giá chi tiết 1–31 đêm và phụ thu khi quy tắc đủ rõ.
 - `POST /api/v1/hold`: giữ chỗ tạm cho checkout website.
-- `POST/PATCH /api/v1/reservations`: tạo/cập nhật booking ngoài hệ thống theo idempotency key.
+- `POST/PATCH /api/v1/reservations`: tạo/cập nhật booking ngoài hệ thống theo external reservation ID.
 - `POST /api/v1/cancellations`, `POST /api/v1/webhook`, `GET /api/v1/ical`.
 - `GET/PATCH /api/v1/outbox`: adapter lấy các sự kiện sẵn sàng gửi và ACK sent/failed theo API key server.
+- `GET /api/v1/adapters`, `POST /api/v1/dispatch`, `POST /api/v1/payouts` phục vụ adapter delivery và payout reconciliation.
 - Gateway có secret được sealed by default; không commit API key/DB password/OTA credential vào repository.
 
 ## Dòng tiền và doanh thu
@@ -87,4 +93,4 @@ npm install
 npm run dev
 ```
 
-Xem thêm `docs/integrations.md`, `docs/booking-deposit-policy.md`, `docs/v1.1-housekeeping-procurement.md`, `docs/v1.2-price-engine.md`, `docs/v1.3-availability-web.md` và `/api/openapi.json`.
+Xem thêm `docs/integrations.md`, `docs/booking-deposit-policy.md`, `docs/v1.6-ota-adapters-payouts.md` và `/api/openapi.json`.
