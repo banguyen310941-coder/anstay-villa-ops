@@ -1,7 +1,7 @@
 {
   "openapi":"3.1.0",
   "info":{"title":"ANSTAY Integration Gateway","version":"0.7.0","description":"Versioned server-to-server contract for ANSTAY website, channel manager and OTA adapters. No secrets are included in this document."},
-  "servers":[{"url":"https://anstay-villa-ops.vercel.app"}],
+  "servers":[{"url":"https://anstay-channel-gateway.vercel.app"}],
   "components":{"securitySchemes":{"AnstayApiKey":{"type":"apiKey","in":"header","name":"X-ANSTAY-Key"}},"schemas":{"Reservation":{"type":"object","required":["channel","external_reservation_id","villa_code","check_in","check_out","guest"],"properties":{"channel":{"type":"string"},"external_reservation_id":{"type":"string"},"villa_code":{"type":"string"},"check_in":{"type":"string","format":"date"},"check_out":{"type":"string","format":"date"},"guests":{"type":"integer","minimum":1},"currency":{"type":"string","const":"VND"},"room_revenue":{"type":"number","minimum":0},"other_revenue":{"type":"number","minimum":0},"discount_amount":{"type":"number","minimum":0},"refund_amount":{"type":"number","minimum":0},"ota_commission":{"type":"number","minimum":0},"tax_fee":{"type":"number","minimum":0},"amount_received":{"type":"number","minimum":0},"guest":{"type":"object","required":["name"],"properties":{"name":{"type":"string"},"phone":{"type":"string"},"email":{"type":"string"},"nationality":{"type":"string"}}}}}}},
   "security":[{"AnstayApiKey":[]}],
   "paths":{
