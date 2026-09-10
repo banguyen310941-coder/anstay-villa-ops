@@ -1,6 +1,6 @@
 # ANSTAY Villa Ops
 
-Phiên bản v1.2 cho chuỗi villa ANSTAY / Resort Hội An.
+Phiên bản v1.3 cho chuỗi villa ANSTAY / Resort Hội An.
 
 ## Production stack
 - Vercel: frontend Vite
@@ -12,8 +12,8 @@ Phiên bản v1.2 cho chuỗi villa ANSTAY / Resort Hội An.
 
 ## Quyền
 - `admin`: toàn hệ thống
-- `sales`: CRM + booking + xem giá/kênh
-- `ops`: booking + vận hành + nhân sự + kho + quản lý giá/kênh
+- `sales`: CRM + booking + xem giá/kênh + xem availability
+- `ops`: booking + vận hành + nhân sự + kho + giá/kênh + block phòng
 - `housekeeping`: việc buồng phòng + điểm danh
 - `stock`: kho
 - `accounting`: tài chính + báo cáo
@@ -25,9 +25,21 @@ Phiên bản v1.2 cho chuỗi villa ANSTAY / Resort Hội An.
 - Nắng: thuê cố định 25.000.000 VND/tháng net.
 - SAM, Gió, Tim: sở hữu.
 
-## Price Engine + Channel Mapping v1.2
+## Availability + Website Booking v1.3
+- `availability_blocks`: khóa phòng vì chủ nhà giữ, bảo trì, nội bộ hoặc khóa thủ công; không xóa lịch sử, chỉ active/inactive.
+- SOL được block 22/08/2026–22/08/2027 và SAM 15/12/2026–15/12/2028 theo dữ liệu villa đã cung cấp.
+- `villa_booking_policies`: sức chứa tối đa, giờ check-in/check-out và chính sách đặt phòng cơ bản. Sức chứa hiện tại: Nhàn/SOL/SAM/Gió 8, Nắng 6, Tim 14 khách.
+- `booking_holds`: giữ phòng tạm 5–20 phút cho checkout website; bảng này chỉ Gateway server truy cập, không mở cho Data API client.
+- Gateway kiểm tra booking đã xác nhận, block vận hành/chủ nhà, hold còn hiệu lực, sức chứa, min-stay, stop-sell và published rate trước khi trả kết quả bán.
+- `GET /api/v1/search`: tìm đồng thời tất cả villa có thể bán theo ngày + số khách.
+- `POST /api/v1/hold`: tạo hold tạm sau khi server kiểm tra lại availability và giá.
+- `POST /api/v1/reservations` nhận `hold_token` tùy chọn và chuyển hold sang `converted` khi booking thành công.
+- App có module **Phòng & Website** để quản lý block, sức chứa, mùa giá và mô phỏng luồng tìm phòng website.
+
+## Price Engine + Channel Mapping v1.2+
 - `rate_plans`: quản lý nhiều Rate Plan, mặc định có `BAR`.
 - `rate_calendar`: giá theo từng ngày, min stay, stop-sell, CTA/CTD và trạng thái nháp/phát hành.
+- `rate_seasons`: lưu mùa giá/dịp lễ thành rule có audit rồi materialize xuống `rate_calendar`.
 - Giá chỉ được Gateway trả ra ngoài khi `published=true`; giá 0 không được coi là sellable.
 - `sales_channels`: Direct, Website, Booking.com, Agoda, Airbnb, Traveloka.
 - `channel_mappings`: mapping villa/rate plan sang từng kênh, lưu external Property/Room/Rate Plan ID và điều chỉnh giá theo `%` hoặc số tiền cố định.
@@ -35,11 +47,13 @@ Phiên bản v1.2 cho chuỗi villa ANSTAY / Resort Hội An.
 - `villa_guest_surcharges`: tách phụ thu người lớn, trẻ 6–12, trẻ dưới 6 và cách tính `manual/per_stay/per_night`. Mặc định giữ `manual` để không tự cộng sai khi quy tắc chưa được xác nhận.
 - Bảng giá hiện có từ workbook ANSTAY được nạp vào database ở trạng thái **nháp**, không tự phát ra website/OTA.
 
-## Integration Gateway v1.2
-- `GET /api/v1/catalog`: villa + channel + rate plan + mapping.
-- `GET /api/v1/availability`: kiểm tra phòng trống ở mức kỳ lưu trú.
-- `GET /api/v1/ari`: availability + inventory + published rate + min stay + stop-sell/CTA/CTD theo ngày.
-- `GET /api/v1/quote`: website/channel hỏi báo giá 1–31 đêm trước khi tạo booking.
+## Integration Gateway v1.3
+- `GET /api/v1/catalog`: villa + booking policy + channel + rate plan + mapping.
+- `GET /api/v1/availability`: availability vật lý, có booking/block/hold conflicts.
+- `GET /api/v1/ari`: inventory + published rate + min stay + stop-sell/CTA/CTD theo ngày.
+- `GET /api/v1/search`: tìm villa bán được theo kỳ lưu trú và số khách.
+- `GET /api/v1/quote`: báo giá chi tiết 1–31 đêm và phụ thu khi quy tắc đủ rõ.
+- `POST /api/v1/hold`: giữ chỗ tạm cho checkout website.
 - `POST/PATCH /api/v1/reservations`: tạo/cập nhật booking ngoài hệ thống theo idempotency key.
 - `POST /api/v1/cancellations`, `POST /api/v1/webhook`, `GET /api/v1/ical`.
 - Gateway có secret được sealed by default; không commit API key/DB password/OTA credential vào repository.
@@ -63,4 +77,4 @@ npm install
 npm run dev
 ```
 
-Xem thêm `docs/integrations.md`, `docs/v1.1-housekeeping-procurement.md`, `docs/v1.2-price-engine.md` và `/api/openapi.json`.
+Xem thêm `docs/integrations.md`, `docs/v1.1-housekeeping-procurement.md`, `docs/v1.2-price-engine.md`, `docs/v1.3-availability-web.md` và `/api/openapi.json`.
