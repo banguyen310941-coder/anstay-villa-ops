@@ -10,7 +10,12 @@ export default async function handler(req,res){
   try{
     const sql=getSql(); const villa=await sql`SELECT id,code,name FROM villas WHERE code=${villaCode} AND active=true LIMIT 1`;
     if(!villa.length)return sendJson(res,404,{error:'villa_not_found'});
-    const conflict=await sql`SELECT count(*)::int AS count FROM bookings WHERE villa_id=${villa[0].id} AND status IN ('confirmed','staying') AND check_in_date < ${checkOut}::date AND check_out_date > ${checkIn}::date`;
-    sendJson(res,200,{villa:{code:villa[0].code,name:villa[0].name},check_in:checkIn,check_out:checkOut,available:Number(conflict[0]?.count||0)===0,units_available:Number(conflict[0]?.count||0)===0?1:0});
+    const [bookings,blocks,holds]=await Promise.all([
+      sql`SELECT count(*)::int AS count FROM bookings WHERE villa_id=${villa[0].id} AND status IN ('confirmed','staying') AND check_in_date < ${checkOut}::date AND check_out_date > ${checkIn}::date`,
+      sql`SELECT id,block_type,start_date::text AS start_date,end_date::text AS end_date,note FROM availability_blocks WHERE villa_id=${villa[0].id} AND active=true AND start_date < ${checkOut}::date AND end_date >= ${checkIn}::date ORDER BY start_date LIMIT 20`,
+      sql`SELECT count(*)::int AS count FROM booking_holds WHERE villa_id=${villa[0].id} AND status='active' AND expires_at>now() AND check_in_date < ${checkOut}::date AND check_out_date > ${checkIn}::date`
+    ]);
+    const bookingCount=Number(bookings[0]?.count||0),holdCount=Number(holds[0]?.count||0),available=bookingCount===0&&holdCount===0&&blocks.length===0;
+    sendJson(res,200,{villa:{code:villa[0].code,name:villa[0].name},check_in:checkIn,check_out:checkOut,available,units_available:available?1:0,conflicts:{bookings:bookingCount,holds:holdCount,blocks:blocks.map(b=>({type:b.block_type,start_date:b.start_date,end_date:b.end_date,note:b.note||null}))}});
   }catch(e){sendJson(res,500,{error:'integration_error',message:String(e.message||e).slice(0,200)})}
 }
