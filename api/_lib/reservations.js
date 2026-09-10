@@ -31,13 +31,24 @@ function num(v){const n=Number(v||0); return Number.isFinite(n)&&n>=0?n:0}
 function int(v,d=1){const n=Math.trunc(Number(v)); return Number.isFinite(n)&&n>0?n:d}
 
 export async function createReservation(payload){
-  const v=validateReservation(payload),sql=getSql(),bookingCode=externalBookingCode(v.channel,v.externalId);
+  const v=validateReservation(payload),sql=getSql(),bookingCode=externalBookingCode(v.channel,v.externalId),guests=int(payload.guests,1),holdToken=String(payload.hold_token||'').trim();
   const existing=await sql`SELECT id, booking_code, status, villa_id, check_in_date, check_out_date FROM bookings WHERE booking_code=${bookingCode} LIMIT 1`;
   if(existing.length) return {action:'existing',booking:existing[0],booking_code:bookingCode};
-  const villa=await sql`SELECT id, code, name FROM villas WHERE code=${v.villaCode} AND active=true LIMIT 1`;
+  const villa=await sql`SELECT v.id,v.code,v.name,p.max_guests FROM villas v LEFT JOIN villa_booking_policies p ON p.villa_id=v.id WHERE v.code=${v.villaCode} AND v.active=true LIMIT 1`;
   if(!villa.length) throw new Error('villa_not_found');
+  if(villa[0].max_guests&&guests>Number(villa[0].max_guests))throw new Error('capacity_exceeded');
+  const blocks=await sql`SELECT id FROM availability_blocks WHERE villa_id=${villa[0].id} AND active=true AND start_date < ${v.checkOut}::date AND end_date >= ${v.checkIn}::date LIMIT 1`;
+  if(blocks.length)throw new Error('availability_blocked');
+  let hold=null;
+  if(holdToken){
+    const holds=await sql`SELECT id,hold_token,villa_id,check_in_date::text AS check_in,check_out_date::text AS check_out,status,expires_at FROM booking_holds WHERE hold_token=${holdToken} LIMIT 1`;
+    if(!holds.length)throw new Error('hold_not_found');
+    hold=holds[0];
+    if(hold.status!=='active'||new Date(hold.expires_at)<=new Date())throw new Error('hold_expired');
+    if(Number(hold.villa_id)!==Number(villa[0].id)||hold.check_in!==v.checkIn||hold.check_out!==v.checkOut)throw new Error('hold_mismatch');
+  }
   const source=String(payload.source||v.channel).slice(0,80);
-  const note=`External channel=${v.channel}; external_reservation_id=${v.externalId}`;
+  const note=`External channel=${v.channel}; external_reservation_id=${v.externalId}${holdToken?`; hold_token=${holdToken}`:''}`;
   const rows=await sql`
     WITH new_customer AS (
       INSERT INTO customers (full_name,phone,email,nationality,marketing_consent)
@@ -48,22 +59,26 @@ export async function createReservation(payload){
       booking_code,villa_id,customer_id,source,check_in_date,check_out_date,guests,status,
       room_revenue,other_revenue,discount_amount,refund_amount,ota_commission,tax_fee,amount_received,invoice_status,notes
     )
-    SELECT ${bookingCode},${villa[0].id},id,${source},${v.checkIn}::date,${v.checkOut}::date,${int(payload.guests,1)},'confirmed',
+    SELECT ${bookingCode},${villa[0].id},id,${source},${v.checkIn}::date,${v.checkOut}::date,${guests},'confirmed',
       ${num(payload.room_revenue)},${num(payload.other_revenue)},${num(payload.discount_amount)},${num(payload.refund_amount)},${num(payload.ota_commission)},${num(payload.tax_fee)},${num(payload.amount_received)},'undetermined',${note}
     FROM new_customer
     RETURNING id,booking_code,status,villa_id,check_in_date,check_out_date,room_revenue,other_revenue,ota_commission,amount_received
   `;
-  return {action:'created',booking:rows[0],booking_code:bookingCode};
+  if(hold)await sql`UPDATE booking_holds SET status='converted',converted_at=now() WHERE id=${hold.id} AND status='active'`;
+  return {action:'created',booking:rows[0],booking_code:bookingCode,hold_converted:Boolean(hold)};
 }
 
 export async function updateReservation(payload){
-  const v=validateReservation(payload),sql=getSql(),bookingCode=externalBookingCode(v.channel,v.externalId);
-  const villa=await sql`SELECT id FROM villas WHERE code=${v.villaCode} AND active=true LIMIT 1`;
+  const v=validateReservation(payload),sql=getSql(),bookingCode=externalBookingCode(v.channel,v.externalId),guests=int(payload.guests,1);
+  const villa=await sql`SELECT v.id,p.max_guests FROM villas v LEFT JOIN villa_booking_policies p ON p.villa_id=v.id WHERE v.code=${v.villaCode} AND v.active=true LIMIT 1`;
   if(!villa.length) throw new Error('villa_not_found');
+  if(villa[0].max_guests&&guests>Number(villa[0].max_guests))throw new Error('capacity_exceeded');
+  const blocks=await sql`SELECT id FROM availability_blocks WHERE villa_id=${villa[0].id} AND active=true AND start_date < ${v.checkOut}::date AND end_date >= ${v.checkIn}::date LIMIT 1`;
+  if(blocks.length)throw new Error('availability_blocked');
   const rows=await sql`
     UPDATE bookings SET
       villa_id=${villa[0].id},check_in_date=${v.checkIn}::date,check_out_date=${v.checkOut}::date,
-      guests=${int(payload.guests,1)},room_revenue=${num(payload.room_revenue)},other_revenue=${num(payload.other_revenue)},
+      guests=${guests},room_revenue=${num(payload.room_revenue)},other_revenue=${num(payload.other_revenue)},
       discount_amount=${num(payload.discount_amount)},refund_amount=${num(payload.refund_amount)},ota_commission=${num(payload.ota_commission)},
       tax_fee=${num(payload.tax_fee)},amount_received=${num(payload.amount_received)},source=${String(payload.source||v.channel).slice(0,80)}
     WHERE booking_code=${bookingCode}
@@ -91,9 +106,10 @@ export function mapReservationError(error){
   const msg=String(error?.message||error||'');
   if(msg.includes('BOOKING_OVERLAP')) return {status:409,code:'booking_overlap',message:'Villa đã có booking xác nhận trong khoảng ngày này.'};
   if(msg.includes('MONTH_LOCKED')||msg.toLowerCase().includes('closed month')) return {status:409,code:'month_locked',message:'Tháng này đã khóa sổ.'};
-  const bad=new Set(['channel_required','external_reservation_id_required','villa_code_required','invalid_stay_dates','guest_name_required','currency_not_supported_yet']);
+  const bad=new Set(['channel_required','external_reservation_id_required','villa_code_required','invalid_stay_dates','guest_name_required','currency_not_supported_yet','hold_mismatch']);
   if(bad.has(msg)) return {status:422,code:msg,message:msg};
-  if(msg==='villa_not_found'||msg==='reservation_not_found') return {status:404,code:msg,message:msg};
+  if(msg==='villa_not_found'||msg==='reservation_not_found'||msg==='hold_not_found') return {status:404,code:msg,message:msg};
+  if(['capacity_exceeded','availability_blocked','hold_expired'].includes(msg))return {status:409,code:msg,message:msg};
   if(msg==='gateway_database_not_configured') return {status:503,code:msg,message:'Gateway chưa được nạp DATABASE_URL phía server.'};
   return {status:500,code:'integration_error',message:'Không xử lý được yêu cầu tích hợp.',detail:msg.slice(0,220)};
 }
