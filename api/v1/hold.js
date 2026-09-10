@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { cleanVillaCode, handleOptions, method, parseBody, requireGatewayKey, sendJson, setCors, validDate } from '../_lib/http.js';
 import { databaseConfigured, getSql } from '../_lib/db.js';
 import { addDays, dateSpanInclusive, normalizeChannel, normalizeRatePlan, resolvePricing } from '../_lib/pricing.js';
@@ -16,8 +15,8 @@ export default async function handler(req,res){
     if(pricing.villa.max_guests&&guests>Number(pricing.villa.max_guests))return sendJson(res,409,{error:'capacity_exceeded',max_guests:Number(pricing.villa.max_guests)});
     const first=pricing.inventory[0];if(first?.closed_to_arrival)return sendJson(res,409,{error:'closed_to_arrival'});if(nights<Number(first?.min_stay||1))return sendJson(res,409,{error:'minimum_stay_not_met',minimum_stay:Number(first.min_stay)});
     const unavailable=pricing.inventory.filter(x=>!x.sellable);if(unavailable.length)return sendJson(res,409,{error:'not_sellable',dates:unavailable.map(x=>x.date)});
-    const total=pricing.inventory.reduce((n,x)=>n+Number(x.rate||0),0),token=randomUUID(),minutes=Math.min(20,Math.max(5,Number(body.hold_minutes||10)));
-    const rows=await sql`INSERT INTO booking_holds(hold_token,villa_id,channel_code,rate_plan_code,check_in_date,check_out_date,guests,quoted_total,currency,expires_at) VALUES (${token},${pricing.villa.id},${channelCode},${ratePlanCode},${checkIn}::date,${checkOut}::date,${guests},${total},${pricing.plan.currency||'VND'},now()+(${minutes}::text||' minutes')::interval) RETURNING hold_token,check_in_date::text AS check_in,check_out_date::text AS check_out,guests,quoted_total,currency,expires_at`;
+    const total=pricing.inventory.reduce((n,x)=>n+Number(x.rate||0),0),minutes=Math.min(20,Math.max(5,Number(body.hold_minutes||10)));
+    const rows=await sql`SELECT * FROM public.create_booking_hold(${pricing.villa.id},${channelCode},${ratePlanCode},${checkIn}::date,${checkOut}::date,${guests},${total},${pricing.plan.currency||'VND'},${minutes})`;
     sendJson(res,201,{hold:rows[0],villa:{code:pricing.villa.code,name:pricing.villa.name},channel:channelCode,rate_plan:ratePlanCode});
-  }catch(e){sendJson(res,500,{error:'integration_error',message:String(e.message||e).slice(0,200)})}
+  }catch(e){const msg=String(e.message||e);const conflict=['HOLD_CONFLICT','HOLD_BOOKING_CONFLICT','HOLD_AVAILABILITY_BLOCKED','HOLD_CAPACITY_EXCEEDED'].find(x=>msg.includes(x));if(conflict)return sendJson(res,409,{error:conflict.toLowerCase(),message:'Villa vừa thay đổi trạng thái. Vui lòng tìm/quote lại.'});sendJson(res,500,{error:'integration_error',message:msg.slice(0,200)})}
 }
