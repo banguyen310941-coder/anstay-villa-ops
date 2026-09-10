@@ -1,0 +1,4 @@
+function ensureV09Collections(){D.payments=D.payments||[];D.commercial=D.commercial||{}}
+$('demoBtn')?.addEventListener('click',()=>{ensureV09Collections()});
+ensureV09Collections();
+if(new URLSearchParams(location.search).get('demo')==='1')setTimeout(()=>$('demoBtn')?.click(),0);
