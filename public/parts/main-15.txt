@@ -1,0 +1,4 @@
+surchargeFor=function(code){const v=VILLAS.find(x=>x.code===code),key=v?.id??v?.code;return D.surcharges.find(x=>String(x.villaId)===String(key))||{villaId:key,adult:0,child:0,infant:0,basis:'manual',note:''}};
+mappingFor=function(channelCode,villaCode,planId){const c=D.channels.find(x=>x.code===channelCode),v=VILLAS.find(x=>x.code===villaCode),key=v?.id??v?.code;return D.channelMappings.find(x=>String(x.channelId)===String(c?.id)&&String(x.villaId)===String(key)&&String(x.planId)===String(planId))};
+rateRow=function(villaCode,planId,date){const v=VILLAS.find(x=>x.code===villaCode),key=v?.id??v?.code;return D.rateCalendar.find(x=>String(x.villaId)===String(key)&&String(x.planId)===String(planId)&&x.date===date)};
+renderNav();render();
