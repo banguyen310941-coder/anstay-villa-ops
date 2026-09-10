@@ -5,7 +5,7 @@ export default function handler(req,res){
   if(req.method!=='GET') return sendJson(res,405,{error:'method_not_allowed'});
   sendJson(res,200,{
     service:'ANSTAY Integration Gateway',
-    version:'1.2.0',
+    version:'1.3.0',
     status:'ready',
     api_version:'v1',
     server_time:new Date().toISOString(),
@@ -14,16 +14,15 @@ export default function handler(req,res){
       server_database:databaseConfigured()?'configured':'sealed',
       ical_token:icalTokenConfigured()?'configured':'sealed'
     },
-    pricing:{
-      engine:'rate_calendar',
-      published_only:true,
-      zero_rate_sellable:false
-    },
+    pricing:{engine:'rate_calendar',published_only:true,zero_rate_sellable:false},
+    availability:{owner_blocks:true,maintenance_blocks:true,temporary_holds:true,capacity_policy:true},
     ports:{
       catalog:'/api/v1/catalog',
       availability:'/api/v1/availability',
       ari:'/api/v1/ari',
+      search:'/api/v1/search',
       quote:'/api/v1/quote',
+      hold:'/api/v1/hold',
       reservations:'/api/v1/reservations',
       cancellations:'/api/v1/cancellations',
       webhook:'/api/v1/webhook',
