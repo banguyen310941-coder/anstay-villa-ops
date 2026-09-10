@@ -1,9 +1,17 @@
 {
-  "name":"anstay-villa-ops",
-  "version":"0.5.0",
-  "private":true,
-  "type":"module",
-  "scripts":{"dev":"vite --host 0.0.0.0","build":"vite build","preview":"vite preview --host 0.0.0.0"},
-  "dependencies":{"@neondatabase/neon-js":"0.7.0-beta"},
-  "devDependencies":{"vite":"^7.0.0"}
+  "name": "anstay-villa-ops",
+  "version": "0.6.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0"
+  },
+  "dependencies": {
+    "@neondatabase/neon-js": "0.7.0-beta"
+  },
+  "devDependencies": {
+    "vite": "^7.0.0"
+  }
 }
