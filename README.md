@@ -1,24 +1,31 @@
 # ANSTAY Villa Ops
 
-MVP v0.3 for multi-villa operations.
+MVP quản trị vận hành chuỗi villa ANSTAY / Resort Hội An.
 
-## Modules
-- Dashboard & monthly forecast
-- CRM / lead pipeline
-- Booking calendar with overlap protection
-- Housekeeping / operations tasks
-- Employees & attendance (GPS prototype)
-- Inventory & stock movements
-- Finance / invoice status / payable tracking
-- Villa contracts and monthly P&L
-- JSON backup / restore
+## Production
+- Vercel: https://anstay-villa-ops.vercel.app
+- GitHub: banguyen310941-coder/anstay-villa-ops
+- Database: Neon Postgres project `anstay-villa-ops`
+- Authentication: Neon Auth (Better Auth), trusted origin `anstay-villa-ops.vercel.app`
 
-## Seeded villa rules
-- Nhàn: revenue share 50/50, room revenue only; other revenue excluded from share.
-- SOL: fixed rent 50,000,000 VND/month net.
-- Nắng: fixed rent 25,000,000 VND/month net.
-- SAM, Gió, Tim: owned.
+## Phiên bản v0.4
+- Dashboard theo villa và mô hình hợp đồng.
+- CRM pipeline.
+- Booking + chống trùng lịch.
+- Housekeeping / maintenance tasks.
+- Nhân viên, GPS check-in/out, phát hiện đi trễ.
+- Bảng công tháng theo nhân viên.
+- Phiếu điều chỉnh chấm công và luồng duyệt/từ chối.
+- Kho, nhập/xuất tồn.
+- Thu/chi, công nợ, hóa đơn.
+- P&L từng villa và dự chi tháng tới.
+- Lớp đăng nhập Neon Auth đã provision; bản demo cục bộ vẫn giữ để thử UI khi chưa bật đồng bộ dữ liệu từ trình duyệt.
 
-## Backend
-A Neon Postgres project named `anstay-villa-ops` has been created. Schema is stored in `docs/schema.sql`.
-The v0.3 UI intentionally uses browser localStorage until server-side credentials/auth are wired through Vercel environment variables. Do not expose database credentials in client-side code.
+## Quy tắc tài chính hiện tại
+- Nhàn: chia 50/50 trên doanh thu bán phòng; doanh thu khác không thuộc căn cứ chia.
+- SOL: thuê cố định net 50.000.000 VND/tháng.
+- Nắng: thuê cố định net 25.000.000 VND/tháng.
+- SAM, Gió, Tim: sở hữu.
+
+## An toàn dữ liệu
+Không lưu database connection string, mật khẩu hoặc token trong repository. Đồng bộ CRUD thật từ UI chỉ bật sau khi hoàn tất Data API/RLS/role policy.
