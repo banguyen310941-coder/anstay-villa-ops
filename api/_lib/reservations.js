@@ -6,7 +6,7 @@ export function externalBookingCode(channel,externalId){
   const c=cleanChannel(channel).toUpperCase()||'EXT';
   const raw=String(externalId||'').trim();
   const readable=raw.toUpperCase().replace(/[^A-Z0-9_-]+/g,'-').replace(/^-+|-+$/g,'').slice(0,30)||'RES';
-  const hash=createHash('sha256').update(`${c.toLowerCase()}:${raw}`).digest('hex').slice(0,10).toUpperCase();
+  const hash=createHash('sha256').update(`${c}:${raw}`).digest('hex').slice(0,10).toUpperCase();
   return `EXT-${c}-${readable}-${hash}`;
 }
 
