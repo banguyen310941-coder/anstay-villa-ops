@@ -1,0 +1,74 @@
+import { createClient } from '@neondatabase/neon-js';
+
+const AUTH_URL='https://ep-dawn-dawn-a5y0y7ou.neonauth.us-east-2.aws.neon.tech/anstay/auth';
+const DATA_API_URL='https://ep-dawn-dawn-a5y0y7ou.apirest.us-east-2.aws.neon.tech/anstay/rest/v1';
+const neon=createClient({auth:{url:AUTH_URL},dataApi:{url:DATA_API_URL}});
+
+const FALLBACK_VILLAS=[
+ {code:'NHAN',name:'Nhàn',model:'share',rule:'50/50 doanh thu bán phòng',rent:0,pct:50},
+ {code:'SOL',name:'SOL',model:'rent',rule:'Thuê net 50M/tháng',rent:50000000,pct:0},
+ {code:'SAM',name:'SAM',model:'owned',rule:'Sở hữu',rent:0,pct:0},
+ {code:'GIO',name:'Gió',model:'owned',rule:'Sở hữu',rent:0,pct:0},
+ {code:'NANG',name:'Nắng',model:'rent',rule:'Thuê net 25M/tháng',rent:25000000,pct:0},
+ {code:'TIM',name:'Tim',model:'owned',rule:'Sở hữu',rent:0,pct:0}
+];
+let VILLAS=[...FALLBACK_VILLAS];
+const NAV=[['dash','▦','Tổng quan','Doanh thu, booking, nhân sự và dòng tiền'],['crm','◎','CRM & Marketing','Lead và pipeline bán hàng'],['booking','▤','Booking','Lịch villa và chống bán trùng'],['ops','✓','Buồng phòng','Housekeeping và bảo trì'],['att','◷','Nhân sự & Điểm danh','Nhân viên, GPS, bảng công, điều chỉnh'],['stock','□','Kho & Mua hàng','Nhập xuất tồn và cảnh báo'],['fin','₫','Tài chính','Thu chi, công nợ và hóa đơn'],['reports','⌁','Báo cáo & Dự chi','P&L từng villa và nghĩa vụ tháng tới'],['settings','⚙','Thiết lập','Trạng thái hệ thống và sao lưu']];
+const ACCESS={admin:NAV.map(x=>x[0]),sales:['dash','crm','booking'],ops:['dash','booking','ops','att','stock'],housekeeping:['dash','ops','att'],stock:['dash','stock'],accounting:['dash','fin','reports'],employee:['dash','att']};
+const STORE='anstay-v05-demo';
+const blank=()=>({leads:[],bookings:[],tasks:[],employees:[],attendance:[],adjustments:[],items:[],moves:[],finance:[]});
+let D=blank(),GPS=null,current='dash',MODE='locked',ROLE='employee',SESSION=null;
+const $=id=>document.getElementById(id);
+const loadLocal=()=>{try{return Object.assign(blank(),JSON.parse(localStorage.getItem(STORE)||'{}'))}catch{return blank()}};
+function saveLocal(){localStorage.setItem(STORE,JSON.stringify(D));render()}
+function fmt(n){return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n)||0))+' ₫'}
+function esc(s){return String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+function day(d=new Date()){return d.toLocaleDateString('en-CA')}
+function mon(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}
+function inMon(s){return s&&String(s).slice(0,7)===mon()}
+function toast(t,bad=false){const e=$('toast');e.textContent=t;e.classList.toggle('bad',bad);e.classList.add('show');setTimeout(()=>e.classList.remove('show'),2400)}
+function badge(v){return v.model==='owned'?'<span class="tag ok">Sở hữu</span>':v.model==='rent'?'<span class="tag warning">Thuê</span>':'<span class="tag info">50/50</span>'}
+function vname(c){return VILLAS.find(v=>String(v.code)===String(c))?.name||c||'—'}
+function vid(c){return VILLAS.find(v=>String(v.code)===String(c))?.id||null}
+function vcode(id){return VILLAS.find(v=>String(v.id)===String(id))?.code||id}
+function vopts(extra=''){return VILLAS.map(v=>`<option value="${v.code}">${esc(v.name)}</option>`).join('')+extra}
+function status(s){return {new:'Mới',contacted:'Đã liên hệ',quoted:'Đã báo giá',deposit:'Đã cọc',won:'Thắng',lost:'Thua',hold:'Giữ chỗ',confirmed:'Đã xác nhận',staying:'Đang ở',checked_out:'Đã check-out',cancelled:'Hủy',open:'Mở',completed:'Hoàn tất',pending:'Chờ duyệt',approved:'Đã duyệt',rejected:'Từ chối'}[s]||s}
+function roleLabel(r){return {admin:'Quản trị',sales:'Sales',ops:'Vận hành',housekeeping:'Housekeeping',stock:'Kho',accounting:'Kế toán',employee:'Nhân viên'}[r]||r}
+function dbError(error){if(!error)return null;return error.message||error.details||String(error)}
+async function q(table,select='*') {const {data,error}=await neon.from(table).select(select);if(error)throw new Error(dbError(error));return data||[]}
+async function safeQ(table,select='*'){try{return await q(table,select)}catch{return []}}
+async function insert(table,row){const {data,error}=await neon.from(table).insert(row).select();if(error)throw new Error(dbError(error));return data?.[0]}
+async function remove(table,id){const {error}=await neon.from(table).delete().eq('id',id);if(error)throw new Error(dbError(error))}
+async function update(table,id,row){const {error}=await neon.from(table).update(row).eq('id',id);if(error)throw new Error(dbError(error))}
+
+async function loadRemote(){
+ const [vs,profiles,customers,leads,bookings,tasks,employees,attendance,adjustments,items,moves,finance]=await Promise.all([
+   q('villas'),safeQ('app_user_profiles'),safeQ('customers'),safeQ('leads'),safeQ('bookings'),safeQ('housekeeping_tasks'),safeQ('employees'),safeQ('attendance'),safeQ('attendance_adjustments'),safeQ('inventory_items'),safeQ('stock_movements'),safeQ('finance_transactions')
+ ]);
+ VILLAS=vs.map(v=>({id:v.id,code:v.code,name:v.name,model:v.ownership_model==='revenue_share'?'share':v.ownership_model==='fixed_rent'?'rent':'owned',rule:v.ownership_model==='revenue_share'?`${Number(v.revenue_share_owner_pct)}% doanh thu bán phòng`:v.ownership_model==='fixed_rent'?`Thuê net ${Number(v.monthly_rent)/1e6}M/tháng`:'Sở hữu',rent:+v.monthly_rent||0,pct:+v.revenue_share_owner_pct||0}));
+ if(!VILLAS.length)VILLAS=[...FALLBACK_VILLAS];
+ const cm=new Map(customers.map(c=>[String(c.id),c]));
+ ROLE=profiles[0]?.app_role||'employee';
+ D.leads=leads.map(x=>({id:+x.id,customerId:x.customer_id,name:cm.get(String(x.customer_id))?.full_name||'—',phone:cm.get(String(x.customer_id))?.phone||'',source:x.source,campaign:x.campaign||'',status:x.status,employeeId:x.assigned_employee_id,value:+x.expected_value||0}));
+ D.bookings=bookings.map(x=>({id:+x.id,code:x.booking_code,guest:cm.get(String(x.customer_id))?.full_name||x.notes||'Khách',customerId:x.customer_id,villa:vcode(x.villa_id),source:x.source,in:x.check_in_date,out:x.check_out_date,status:x.status,guests:+x.guests||1,room:+x.room_revenue||0,other:+x.other_revenue||0,received:+x.amount_received||0,invoice:x.invoice_status}));
+ D.employees=employees.map(x=>({id:+x.id,code:x.employee_code,name:x.full_name,role:x.role,phone:x.phone||'',active:x.active}));
+ D.tasks=tasks.map(x=>({id:+x.id,villa:vcode(x.villa_id),bookingId:x.booking_id,type:x.task_type,employeeId:x.assigned_employee_id,owner:D.employees.find(e=>String(e.id)===String(x.assigned_employee_id))?.name||'',due:x.due_at||'',note:x.notes||'',done:x.status==='completed',status:x.status}));
+ const shiftRows=await safeQ('shifts'); const sm=new Map(shiftRows.map(s=>[String(s.id),s]));
+ D.attendance=attendance.map(x=>({id:+x.id,employee:+x.employee_id,villa:vcode(x.villa_id),shift:sm.get(String(x.shift_id))?.code?.toLowerCase()||'flex',shiftId:x.shift_id,in:x.check_in_at,out:x.check_out_at,gps:x.check_in_lat!=null?{lat:+x.check_in_lat,lng:+x.check_in_lng}:null,date:x.work_date,status:x.status}));
+ D.adjustments=adjustments.map(x=>({id:+x.id,employee:+x.employee_id,date:x.work_date,reason:x.reason,status:x.status,in:x.requested_check_in,out:x.requested_check_out}));
+ D.items=items.map(x=>({id:+x.id,sku:x.sku,name:x.name,unit:x.unit,min:+x.min_stock||0,cost:+x.average_cost||0}));
+ D.moves=moves.map(x=>({id:+x.id,item:+x.item_id,villa:vcode(x.villa_id),type:x.movement_type,qty:+x.quantity||0,cost:+x.unit_cost||0,at:x.movement_at,note:x.note||''}));
+ D.finance=finance.map(x=>({id:+x.id,date:x.transaction_date,villa:vcode(x.villa_id),dir:x.direction,cat:x.category,amount:+x.amount||0,source:x.source||'',paid:x.paid,due:x.due_date,invoice:x.invoice_status,account:x.account_name||''}));
+ applyAccess(); render();
+}
+async function refresh(){if(MODE==='auth')await loadRemote();else render()}
+
+function calcVilla(code){const bs=D.bookings.filter(b=>b.villa===code&&inMon(b.in)&&b.status!=='cancelled'),fs=D.finance.filter(f=>f.villa===code&&inMon(f.date));const room=bs.reduce((n,b)=>n+(+b.room||0),0)+fs.filter(f=>f.dir==='in'&&f.cat==='room').reduce((n,f)=>n+(+f.amount||0),0),other=bs.reduce((n,b)=>n+(+b.other||0),0)+fs.filter(f=>f.dir==='in'&&f.cat==='other').reduce((n,f)=>n+(+f.amount||0),0),expense=fs.filter(f=>f.dir==='out').reduce((n,f)=>n+(+f.amount||0),0),v=VILLAS.find(v=>v.code===code),owner=v?.model==='share'?room*(v.pct/100):v?.rent||0;return {room,other,expense,owner,profit:room+other-expense-owner}}
+function overlaps(v,cin,cout){return D.bookings.some(b=>b.villa===v&&['confirmed','staying'].includes(b.status)&&cin<b.out&&cout>b.in)}
+function late(a){if(!a.in||a.shift==='flex')return false;const d=new Date(a.in),m=d.getHours()*60+d.getMinutes(),s={morning:420,afternoon:900,office:480}[a.shift];return s!=null&&m>s+5}
+function hours(a){return a.in&&a.out?Math.max(0,(new Date(a.out)-new Date(a.in))/36e5):0}
+function forecast(){const n=new Date(),s=new Date(n.getFullYear(),n.getMonth()+1,1).toLocaleDateString('en-CA'),e=new Date(n.getFullYear(),n.getMonth()+2,0).toLocaleDateString('en-CA'),ap=D.finance.filter(f=>f.dir==='out'&&!f.paid&&f.due&&f.due>=s&&f.due<=e).reduce((x,f)=>x+(+f.amount||0),0),fixed=VILLAS.reduce((n,v)=>n+(v.model==='rent'?v.rent:0),0);return {fixed,ap,total:fixed+ap}}
+
+function applyAccess(){const allowed=MODE==='demo'?NAV.map(x=>x[0]):(ACCESS[ROLE]||ACCESS.employee);if(!allowed.includes(current))current=allowed[0]||'dash';renderNav()}
+function renderNav(){const allowed=MODE==='demo'?NAV.map(x=>x[0]):(ACCESS[ROLE]||ACCESS.employee);$('nav').innerHTML=NAV.filter(x=>allowed.includes(x[0])).map(([k,i,n])=>`<button data-k="${k}" class="${k===current?'active':''}">${i} ${n}</button>`).join('');$('nav').onclick=e=>{const b=e.target.closest('button[data-k]');if(!b)return;current=b.dataset.k;const m=NAV.find(x=>x[0]===current);$('pageTitle').textContent=m[2];$('pageSub').textContent=m[3];$('sidebar').classList.remove('open');renderNav();render()}}
+function dash(){const c=VILLAS.map(v=>[v,calcVilla(v.code)]),rev=c.reduce((n,x)=>n+x[1].room+x[1].other,0),bk=D.bookings.filter(b=>inMon(b.in)&&b.status!=='cancelled'),att=D.attendance.filter(a=>a.date===day()),f=forecast();return `<div class="view"><div class="note"><b>Dữ liệu:</b> ${MODE==='auth'?'Neon Postgres thật · RLS đang bật':'Bản demo cục bộ'} · Nhàn 50/50 DT phòng · SOL 50M · Nắng 25M · SAM/Gió/Tim sở hữu.</div><div class="grid kpis"><div class="kpi"><span>Doanh thu tháng</span><b>${fmt(rev)}</b></div><div class="kpi"><span>Booking tháng</span><b>${bk.length}</b></div><div class="kpi"><span>Đang trong ca</span><b>${att.filter(a=>!a.out).length}</b></div><div class="kpi"><span>Dự chi tháng tới</span><b>${fmt(f.total)}</b></div></div><div class="grid two"><div class="card"><h3>Tình hình 6 villa</h3><div class="scroll"><table><tr><th>Villa</th><th>Mô hình</th><th>DT</th><th>Thuê/chia chủ</th><th>LN đóng góp</th></tr>${c.map(([v,x])=>`<tr><td><b>${esc(v.name)}</b></td><td>${badge(v)}</td><td>${fmt(x.room+x.other)}</td><td>${fmt(x.owner)}</td><td><b>${fmt(x.profit)}</b></td></tr>`).jo
