@@ -1,8 +1,8 @@
 const $=id=>document.getElementById(id);
 const fmt=n=>new Intl.NumberFormat('vi-VN').format(Math.round(Number(n)||0))+' ₫';
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const DEMO=new URLSearchParams(location.search).get('demo')==='1';
-const API_BASE='https://anstay-booking-engine.vercel.app/api';
+const API_BASE='/api/public';
 function ymd(d){return d.toLocaleDateString('en-CA')}
 const t=new Date(),a=new Date(t),b=new Date(t);a.setDate(t.getDate()+1);b.setDate(t.getDate()+3);$('cin').value=ymd(a);$('cout').value=ymd(b);$('cin').min=ymd(t);$('cout').min=ymd(a);
 let selected=null,hold=null,timerId=null;
