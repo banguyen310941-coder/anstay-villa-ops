@@ -1,0 +1,17 @@
+{
+  "openapi":"3.1.0",
+  "info":{"title":"ANSTAY Integration Gateway","version":"0.7.0","description":"Versioned server-to-server contract for ANSTAY website, channel manager and OTA adapters. No secrets are included in this document."},
+  "servers":[{"url":"https://anstay-villa-ops.vercel.app"}],
+  "components":{"securitySchemes":{"AnstayApiKey":{"type":"apiKey","in":"header","name":"X-ANSTAY-Key"}},"schemas":{"Reservation":{"type":"object","required":["channel","external_reservation_id","villa_code","check_in","check_out","guest"],"properties":{"channel":{"type":"string"},"external_reservation_id":{"type":"string"},"villa_code":{"type":"string"},"check_in":{"type":"string","format":"date"},"check_out":{"type":"string","format":"date"},"guests":{"type":"integer","minimum":1},"currency":{"type":"string","const":"VND"},"room_revenue":{"type":"number","minimum":0},"other_revenue":{"type":"number","minimum":0},"discount_amount":{"type":"number","minimum":0},"refund_amount":{"type":"number","minimum":0},"ota_commission":{"type":"number","minimum":0},"tax_fee":{"type":"number","minimum":0},"amount_received":{"type":"number","minimum":0},"guest":{"type":"object","required":["name"],"properties":{"name":{"type":"string"},"phone":{"type":"string"},"email":{"type":"string"},"nationality":{"type":"string"}}}}}}},
+  "security":[{"AnstayApiKey":[]}],
+  "paths":{
+    "/api/v1/health":{"get":{"security":[],"summary":"Gateway health and sealed/configured state","responses":{"200":{"description":"OK"}}}},
+    "/api/v1/catalog":{"get":{"summary":"Active villa codes for external mapping","responses":{"200":{"description":"Villa catalog"}}}},
+    "/api/v1/availability":{"get":{"summary":"Stay-level availability","parameters":[{"in":"query","name":"villa_code","required":true,"schema":{"type":"string"}},{"in":"query","name":"check_in","required":true,"schema":{"type":"string","format":"date"}},{"in":"query","name":"check_out","required":true,"schema":{"type":"string","format":"date"}}],"responses":{"200":{"description":"Availability result"},"409":{"description":"Conflict"}}}},
+    "/api/v1/ari":{"get":{"summary":"Availability / inventory feed up to 93 days; rates remain null until pricing module is configured","responses":{"200":{"description":"Daily ARI"}}}},
+    "/api/v1/reservations":{"post":{"summary":"Create idempotent external reservation","requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/Reservation"}}}},"responses":{"201":{"description":"Created"},"200":{"description":"Already existed"},"409":{"description":"Overlap or locked month"}}},"patch":{"summary":"Update external reservation","requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/Reservation"}}}},"responses":{"200":{"description":"Updated"}}}},
+    "/api/v1/cancellations":{"post":{"summary":"Cancel external reservation by channel + external_reservation_id","responses":{"200":{"description":"Cancelled"}}}},
+    "/api/v1/webhook":{"post":{"summary":"Normalized generic inbound webhook for adapter layer","responses":{"200":{"description":"Processed"}}}},
+    "/api/v1/ical":{"get":{"security":[],"summary":"Secret-token iCal export for one villa","responses":{"200":{"description":"text/calendar"}}}}
+  }
+}
