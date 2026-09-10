@@ -1,0 +1,31 @@
+
+const bindWebSales_v144=bindWebSales;
+bindWebSales=function(){
+  bindWebSales_v144();
+  if(current!=='websales')return;
+  document.querySelectorAll('[data-web-pay]').forEach(b=>b.onclick=async()=>{
+    const r=D.websiteRequests.find(x=>x.id===+b.dataset.webPay);if(!r)return;
+    const a=prompt('Nhập số tiền cọc đã kiểm tra thực nhận (VND):','');if(a===null)return;
+    const amount=Number(a);if(!Number.isFinite(amount)||amount<=0)return toast('Số tiền không hợp lệ',true);
+    const ref=prompt('Mã giao dịch / tham chiếu ngân hàng:','')||'';
+    try{
+      const pay=await neon.rpc('admin_record_website_request_payment',{p_request_id:r.id,p_amount:amount,p_reference:ref||null,p_method:'transfer'});
+      if(pay.error)throw new Error(dbError(pay.error));
+      const p=pay.data||{};
+      const required=p.deposit_required==null?null:Number(p.deposit_required),paid=Number(p.deposit_paid||0);
+      const canAuto=['admin','ops'].includes(ROLE)&&!r.manual&&r.total!=null&&required!=null&&required>0&&paid>=required;
+      if(canAuto){
+        const confirmResult=await neon.rpc('admin_confirm_website_request',{p_request_id:r.id});
+        if(confirmResult.error)throw new Error(dbError(confirmResult.error));
+        toast('Đã ghi đủ cọc và tự tạo booking');
+        await loadRemote();
+      }else{
+        toast(required==null?'Đã ghi cọc · chưa có mức cọc yêu cầu':paid>=required?'Đã ghi đủ cọc · chờ người có quyền xác nhận':'Đã ghi cọc một phần');
+        await syncWebSalesRemote();await refresh();
+      }
+    }catch(e){console.error(e);toast(e?.message||String(e),true)}
+  });
+};
+const render_v144=render;
+render=function(){render_v144();if(current==='websales'){const note=document.querySelector('#content .note');if(note&&!note.dataset.depositAuto){note.dataset.depositAuto='1';note.insertAdjacentHTML('beforeend','<br><b>Tự động sau cọc:</b> khi đã chốt giá, đã đặt mức cọc và số tiền thực nhận đạt mức cọc, tài khoản Quản trị/Vận hành sẽ tự chuyển yêu cầu thành booking thật. Kế toán ghi nhận cọc nhưng không tự xác nhận booking.')}}};
+render();
