@@ -3,6 +3,8 @@
   "outputDirectory":"dist",
   "framework":"vite",
   "rewrites":[
-    {"source":"/booking","destination":"/booking.html"}
+    {"source":"/booking","destination":"/booking.html"},
+    {"source":"/api/public/:path*","destination":"https://anstay-booking-engine.vercel.app/api/:path*"},
+    {"source":"/api/v1/:path*","destination":"https://anstay-channel-gateway.vercel.app/api/v1/:path*"}
   ]
 }
