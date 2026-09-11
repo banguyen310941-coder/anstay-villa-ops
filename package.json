@@ -1,11 +1,11 @@
 {
   "name": "anstay-villa-ops",
-  "version": "1.6.1",
+  "version": "1.6.2",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "prebuild": "node scripts/check-parts.mjs",
+    "prebuild": "node scripts/build-runtime.mjs && node scripts/check-parts.mjs",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0"
   },
