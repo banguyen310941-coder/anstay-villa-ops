@@ -6,7 +6,7 @@ export default function handler(req,res){
   if(req.method!=='GET')return sendJson(res,405,{error:'method_not_allowed'});
   const adapters=adapterCatalog(),configuredAdapters=adapters.filter(x=>x.configured).length;
   sendJson(res,200,{
-    service:'ANSTAY Integration Gateway',version:'1.6.2',status:'ready',api_version:'v1',server_time:new Date().toISOString(),
+    service:'ANSTAY Integration Gateway',version:'1.6.3',status:'ready',api_version:'v1',server_time:new Date().toISOString(),
     configuration:{api_key:gatewayKeyConfigured()?'configured':'sealed',server_database:databaseConfigured()?'configured':'sealed',ical_token:icalTokenConfigured()?'configured':'sealed',ota_adapters:`${configuredAdapters}/${adapters.length} configured`},
     pricing:{engine:'rate_calendar',published_only:true,zero_rate_sellable:false},
     availability:{owner_blocks:true,maintenance_blocks:true,temporary_holds:true,capacity_policy:true},
