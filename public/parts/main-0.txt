@@ -66,7 +66,7 @@ async function loadRemote(){
 }
 async function refresh(){if(MODE==='auth')await loadRemote();else render()}
 
-function calcVilla(code){const bs=D.bookings.filter(b=>b.villa===code&&inMon(b.in)&&b.status!=='cancelled'),fs=D.finance.filter(f=>f.villa===code&&inMon(f.date));const room=bs.reduce((n,b)=>n+(+b.room||0),0),other=bs.reduce((n,b)=>n+(+b.other||0),0),expense=fs.filter(f=>f.dir==='out').reduce((n,f)=>n+(+f.amount||0),0),v=VILLAS.find(v=>v.code===code),owner=v?.model==='share'?room*(v.pct/100):v?.rent||0;return {room,other,expense,owner,profit:room+other-expense-owner}}
+function calcVilla(code){const bs=D.bookings.filter(b=>b.villa===code&&inMon(b.in)&&b.status!=='cancelled'),fs=D.finance.filter(f=>f.villa===code&&inMon(f.date));const bookedRoom=bs.reduce((n,b)=>n+(+b.room||0),0),room=bs.reduce((n,b)=>{const c=D.commercial?.[b.id];return n+(c?.recognized==null?(+b.room||0):(+c.recognized||0))},0),ownerBasis=bs.reduce((n,b)=>{const c=D.commercial?.[b.id];return n+(c?.ownerBase==null?(+b.room||0):(+c.ownerBase||0))},0),other=bs.reduce((n,b)=>n+(+b.other||0),0),expense=fs.filter(f=>f.dir==='out').reduce((n,f)=>n+(+f.amount||0),0),v=VILLAS.find(v=>v.code===code),owner=v?.model==='share'?ownerBasis*(v.pct/100):v?.rent||0;return {room,bookedRoom,ownerBasis,other,expense,owner,profit:room+other-expense-owner}}
 function overlaps(v,cin,cout){return D.bookings.some(b=>b.villa===v&&['confirmed','staying'].includes(b.status)&&cin<b.out&&cout>b.in)}
 function late(a){if(!a.in||a.shift==='flex')return false;const d=new Date(a.in),m=d.getHours()*60+d.getMinutes(),s={morning:420,afternoon:900,office:480}[a.shift];return s!=null&&m>s+5}
 function hours(a){return a.in&&a.out?Math.max(0,(new Date(a.out)-new Date(a.in))/36e5):0}
