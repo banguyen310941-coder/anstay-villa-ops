@@ -360,3 +360,157 @@ renderCalendar=function(){const e=$('calendar');if(!e)return;const y=CAL_MONTH.g
 document.addEventListener('click',e=>{const btn=e.target.closest('#addBooking');if(!btn)return;const villa=$('bVilla')?.value,cin=$('bIn')?.value,cout=$('bOut')?.value,guests=+$('bGuests')?.value||1,st=$('bStatus')?.value;if(!villa||!cin||!cout||!['confirmed','staying'].includes(st))return;const p=policyFor(villa),block=blockConflict(villa,cin,cout);let message='';if(p.maxGuests&&guests>p.maxGuests)message=`${vname(villa)} tối đa ${p.maxGuests} khách`;else if(block)message=`${vname(villa)} đang bị khóa: ${blockTypeLabel(block.type)}${block.note?' · '+block.note:''}`;if(message){e.preventDefault();e.stopImmediatePropagation();toast(message,true)}},true);
 render();
 
+/* main-18.txt */
+D.websiteRequests=D.websiteRequests||[];D.websitePaymentIntents=D.websitePaymentIntents||[];D.channelOutbox=D.channelOutbox||[];
+if(!NAV.some(x=>x[0]==='websales'))NAV.splice(Math.max(0,NAV.findIndex(x=>x[0]==='reports')),0,['websales','↗','Website & OTA','Yêu cầu đặt phòng, tiền cọc và hàng đợi đồng bộ kênh']);
+for(const r of ['admin','sales','ops','accounting'])if(ACCESS[r]&&!ACCESS[r].includes('websales'))ACCESS[r].push('websales');
+function webReqStatus(s){return {needs_manual_quote:'Chờ chốt phụ thu',pending_review:'Chờ duyệt',confirmed:'Đã xác nhận',rejected:'Từ chối',cancelled:'Đã hủy'}[s]||s}
+function webReqClass(s){return s==='confirmed'?'ok':s==='rejected'||s==='cancelled'?'bad':s==='needs_manual_quote'?'warning':'info'}
+function outboxStatus(s){return {pending:'Chờ gửi',sent:'Đã gửi',failed:'Lỗi',waiting_mapping:'Chờ mapping'}[s]||s}
+function outboxClass(s){return s==='sent'?'ok':s==='failed'?'bad':s==='waiting_mapping'?'warning':'info'}
+async function syncWebSalesRemote(){if(MODE!=='auth'){D.websiteRequests=D.websiteRequests||[];D.websitePaymentIntents=D.websitePaymentIntents||[];D.channelOutbox=D.channelOutbox||[];return}const [requests,payments,outbox]=await Promise.all([safeQ('website_booking_requests'),safeQ('website_payment_intents'),safeQ('channel_sync_outbox')]);D.websiteRequests=requests.map(x=>({id:+x.id,code:x.request_code,hold:x.hold_token,villa:vcode(x.villa_id),channel:x.channel_code,plan:x.rate_plan_code,in:x.check_in_date,out:x.check_out_date,guests:+x.guests||1,extraAdults:+x.extra_adults||0,children612:+x.children_6_12||0,childrenUnder6:+x.children_under_6||0,name:x.guest_name,email:x.guest_email,phone:x.guest_phone||'',note:x.guest_note||'',room:x.room_amount==null?null:+x.room_amount,surcharge:x.surcharge_amount==null?null:+x.surcharge_amount,total:x.total_amount==null?null:+x.total_amount,manual:!!x.requires_manual_quote,depositRequired:x.deposit_required==null?null:+x.deposit_required,depositPaid:+x.deposit_paid||0,paymentStatus:x.payment_status,status:x.status,bookingId:x.confirmed_booking_id,expires:x.expires_at,created:x.created_at}));D.websitePaymentIntents=payments.map(x=>({id:+x.id,requestId:+x.request_id,provider:x.provider,method:x.method,amount:+x.amount||0,status:x.status,reference:x.external_reference||'',paidAt:x.paid_at,created:x.created_at}));D.channelOutbox=outbox.map(x=>({id:+x.id,bookingId:x.booking_id==null?null:+x.booking_id,villa:vcode(x.villa_id),channel:x.channel_code,event:x.event_type,status:x.status,attempts:+x.attempts||0,next:x.next_attempt_at,error:x.last_error||'',created:x.created_at,sent:x.sent_at}))}
+const loadRemote_v14=loadRemote;loadRemote=async function(){await loadRemote_v14();await syncWebSalesRemote();if(current==='websales')render()};
+function websales(){const req=D.websiteRequests.slice().sort((a,b)=>String(b.created).localeCompare(String(a.created))),pending=req.filter(x=>!['confirmed','rejected','cancelled'].includes(x.status)),manual=req.filter(x=>x.status==='needs_manual_quote'),paid=req.filter(x=>x.depositPaid>0),out=D.channelOutbox.slice().sort((a,b)=>String(b.created).localeCompare(String(a.created))),queue=out.filter(x=>['pending','failed','waiting_mapping'].includes(x.status));return `<div class="view"><div class="note"><b>Website Booking + OTA Outbox:</b> khách chỉ gửi yêu cầu sau khi hệ thống giữ phòng tạm thời. Booking thật chỉ được tạo khi nhân sự ANSTAY xác nhận. OTA outbound dùng hàng đợi riêng và chưa gửi nếu thiếu mapping/credential.</div><div class="grid kpis"><div class="kpi"><span>Yêu cầu chờ xử lý</span><b>${pending.length}</b></div><div class="kpi"><span>Chờ chốt phụ thu</span><b>${manual.length}</b></div><div class="kpi"><span>Yêu cầu đã nhận cọc</span><b>${paid.length}</b></div><div class="kpi"><span>OTA outbox chưa xong</span><b>${queue.length}</b></div></div><div class="card"><div class="row" style="justify-content:space-between;align-items:center"><div><h3>Yêu cầu đặt villa từ website</h3><p class="muted">Trang khách: <a href="/booking.html" target="_blank" rel="noopener">/booking.html ↗</a></p></div><span class="tag info">${req.length} yêu cầu</span></div><div class="scroll"><table><tr><th>Mã / khách</th><th>Villa / ngày</th><th>Giá</th><th>Cọc</th><th>TT</th><th>Thao tác</th></tr>${req.map(r=>{const due=r.depositRequired,paid=r.depositPaid,depositOk=due==null||due<=0||paid>=due;return `<tr><td><b>${esc(r.code)}</b><br>${esc(r.name)}<br><small>${esc(r.phone)} · ${esc(r.email)}</small></td><td><b>${vname(r.villa)}</b><br>${r.in} → ${r.out}<br><small>${r.guests} khách${r.extraAdults+r.children612+r.childrenUnder6?` · phụ thu khai báo ${r.extraAdults}/${r.children612}/${r.childrenUnder6}`:''}</small></td><td>Phòng: ${r.room==null?'—':fmt(r.room)}<br>Phụ thu: ${r.surcharge==null?'Chờ xác nhận':fmt(r.surcharge)}<br><b>Tổng: ${r.total==null?'—':fmt(r.total)}</b></td><td>${due==null?'Chưa đặt mức cọc':`Yêu cầu ${fmt(due)}`}<br>Đã ghi ${fmt(paid)}<br>${due!=null?`<span class="tag ${depositOk?'ok':'warning'}">${depositOk?'Đủ cọc':'Chưa đủ cọc'}</span>`:''}</td><td><span class="tag ${webReqClass(r.status)}">${esc(webReqStatus(r.status))}</span><br><small>${esc(r.paymentStatus||'')}</small></td><td><div class="actions">${!['confirmed','rejected','cancelled'].includes(r.status)?`<button data-web-quote="${r.id}">Giá / cọc</button>${['admin','ops','accounting'].includes(ROLE)?`<button data-web-pay="${r.id}">Ghi tiền cọc</button>`:''}${!r.manual&&depositOk&&['admin','sales','ops'].includes(ROLE)?`<button class="primary" data-web-confirm="${r.id}">Xác nhận booking</button>`:''}<button class="danger-btn" data-web-reject="${r.id}">Từ chối</button>`:'—'}</div></td></tr>`}).join('')||'<tr><td colspan="6" class="empty">Chưa có yêu cầu website</td></tr>'}</table></div></div><div class="grid two" style="margin-top:14px"><div class="card"><h3>Nhật ký tiền cọc trước xác nhận</h3><div class="scroll"><table><tr><th>Yêu cầu</th><th>Số tiền</th><th>Phương thức</th><th>Tham chiếu</th><th>TT</th></tr>${D.websitePaymentIntents.slice().sort((a,b)=>String(b.created).localeCompare(String(a.created))).slice(0,50).map(p=>{const r=req.find(x=>x.id===p.requestId);return `<tr><td>${esc(r?.code||p.requestId)}</td><td><b>${fmt(p.amount)}</b></td><td>${esc(p.method)}</td><td>${esc(p.reference||'—')}</td><td><span class="tag ${p.status==='paid'?'ok':'warning'}">${esc(p.status)}</span></td></tr>`}).join('')||'<tr><td colspan="5" class="empty">Chưa có giao dịch cọc website</td></tr>'}</table></div></div><div class="card"><h3>OTA Channel Sync Outbox</h3><p class="muted">Booking xác nhận/thay đổi/hủy sẽ sinh sự kiện inventory cho các OTA. Dòng “Chờ mapping” chưa được gửi vì còn thiếu Property/Room ID của kênh.</p><div class="scroll"><table><tr><th>Kênh</th><th>Villa</th><th>Sự kiện</th><th>TT</th><th>Lần thử</th><th></th></tr>${out.slice(0,80).map(x=>`<tr><td><b>${esc(x.channel)}</b></td><td>${vname(x.villa)}</td><td>${esc(x.event)}</td><td><span class="tag ${outboxClass(x.status)}">${esc(outboxStatus(x.status))}</span>${x.error?`<br><small>${esc(x.error)}</small>`:''}</td><td>${x.attempts}</td><td>${x.status==='failed'&&['admin','ops'].includes(ROLE)?`<button data-outbox-retry="${x.id}">Gửi lại</button>`:x.status==='waiting_mapping'?'<small>Hoàn tất Channel Mapping trước</small>':'—'}</td></tr>`).join('')||'<tr><td colspan="6" class="empty">Chưa có sự kiện outbound</td></tr>'}</table></div></div></div></div>`}
+async function webSalesAction(fn,msg){try{await fn();toast(msg);if(MODE==='auth')await syncWebSalesRemote();await refresh()}catch(e){console.error(e);toast(e?.message||String(e),true)}}
+function bindWebSales(){if(current!=='websales')return;document.querySelectorAll('[data-web-quote]').forEach(b=>b.onclick=()=>{const r=D.websiteRequests.find(x=>x.id===+b.dataset.webQuote);if(!r)return;const s=prompt('Nhập tổng phụ thu đã xác nhận (VND):',String(r.surcharge??0));if(s===null)return;const surcharge=Number(s);if(!Number.isFinite(surcharge)||surcharge<0)return toast('Phụ thu không hợp lệ',true);const d=prompt('Nhập mức cọc yêu cầu (VND). Để trống nếu chưa chốt:',r.depositRequired==null?'':String(r.depositRequired));if(d===null)return;const deposit=d.trim()===''?null:Number(d);if(deposit!=null&&(!Number.isFinite(deposit)||deposit<0))return toast('Mức cọc không hợp lệ',true);webSalesAction(async()=>{const {error}=await neon.rpc('admin_update_website_request_quote',{p_request_id:r.id,p_surcharge_amount:surcharge,p_deposit_required:deposit});if(error)throw new Error(dbError(error))},'Đã cập nhật giá phụ thu / mức cọc')});document.querySelectorAll('[data-web-pay]').forEach(b=>b.onclick=()=>{const r=D.websiteRequests.find(x=>x.id===+b.dataset.webPay);if(!r)return;const a=prompt('Nhập số tiền cọc đã kiểm tra thực nhận (VND):','');if(a===null)return;const amount=Number(a);if(!Number.isFinite(amount)||amount<=0)return toast('Số tiền không hợp lệ',true);const ref=prompt('Mã giao dịch / tham chiếu ngân hàng:','')||'';webSalesAction(async()=>{const {error}=await neon.rpc('admin_record_website_request_payment',{p_request_id:r.id,p_amount:amount,p_reference:ref||null,p_method:'transfer'});if(error)throw new Error(dbError(error))},'Đã ghi nhận tiền cọc')});document.querySelectorAll('[data-web-confirm]').forEach(b=>b.onclick=()=>{const r=D.websiteRequests.find(x=>x.id===+b.dataset.webConfirm);if(!r||!confirm(`Xác nhận ${r.code} thành booking thật?`))return;webSalesAction(async()=>{const {error}=await neon.rpc('admin_confirm_website_request',{p_request_id:r.id});if(error)throw new Error(dbError(error));await loadRemote()},'Đã tạo booking và khóa lịch')});document.querySelectorAll('[data-web-reject]').forEach(b=>b.onclick=()=>{const r=D.websiteRequests.find(x=>x.id===+b.dataset.webReject);if(!r)return;const why=prompt('Lý do từ chối / hủy yêu cầu:','')||'';if(!confirm(`Từ chối ${r.code}?`))return;webSalesAction(async()=>{const {error}=await neon.rpc('admin_reject_website_request',{p_request_id:r.id,p_reason:why||null});if(error)throw new Error(dbError(error))},'Đã từ chối yêu cầu')});document.querySelectorAll('[data-outbox-retry]').forEach(b=>b.onclick=()=>webSalesAction(async()=>{const {error}=await neon.rpc('admin_retry_channel_outbox',{p_outbox_id:+b.dataset.outboxRetry});if(error)throw new Error(dbError(error))},'Đã đưa sự kiện về hàng chờ gửi'))}
+const render_v14=render;render=function(){if(current==='websales'){$('content').innerHTML=websales();bindWebSales();return}render_v14()};
+renderNav();render();
+/* main-19.txt */
+
+const bindWebSales_v144=bindWebSales;
+bindWebSales=function(){
+  bindWebSales_v144();
+  if(current!=='websales')return;
+  document.querySelectorAll('[data-web-pay]').forEach(b=>b.onclick=async()=>{
+    const r=D.websiteRequests.find(x=>x.id===+b.dataset.webPay);if(!r)return;
+    const a=prompt('Nhập số tiền cọc đã kiểm tra thực nhận (VND):','');if(a===null)return;
+    const amount=Number(a);if(!Number.isFinite(amount)||amount<=0)return toast('Số tiền không hợp lệ',true);
+    const ref=prompt('Mã giao dịch / tham chiếu ngân hàng:','')||'';
+    try{
+      const pay=await neon.rpc('admin_record_website_request_payment',{p_request_id:r.id,p_amount:amount,p_reference:ref||null,p_method:'transfer'});
+      if(pay.error)throw new Error(dbError(pay.error));
+      const p=pay.data||{};
+      const required=p.deposit_required==null?null:Number(p.deposit_required),paid=Number(p.deposit_paid||0);
+      const canAuto=['admin','ops'].includes(ROLE)&&!r.manual&&r.total!=null&&required!=null&&required>0&&paid>=required;
+      if(canAuto){
+        const confirmResult=await neon.rpc('admin_confirm_website_request',{p_request_id:r.id});
+        if(confirmResult.error)throw new Error(dbError(confirmResult.error));
+        toast('Đã ghi đủ cọc và tự tạo booking');
+        await loadRemote();
+      }else{
+        toast(required==null?'Đã ghi cọc · chưa có mức cọc yêu cầu':paid>=required?'Đã ghi đủ cọc · chờ người có quyền xác nhận':'Đã ghi cọc một phần');
+        await syncWebSalesRemote();await refresh();
+      }
+    }catch(e){console.error(e);toast(e?.message||String(e),true)}
+  });
+};
+const render_v144=render;
+render=function(){render_v144();if(current==='websales'){const note=document.querySelector('#content .note');if(note&&!note.dataset.depositAuto){note.dataset.depositAuto='1';note.insertAdjacentHTML('beforeend','<br><b>Tự động sau cọc:</b> khi đã chốt giá, đã đặt mức cọc và số tiền thực nhận đạt mức cọc, tài khoản Quản trị/Vận hành sẽ tự chuyển yêu cầu thành booking thật. Kế toán ghi nhận cọc nhưng không tự xác nhận booking.')}}};
+render();
+
+/* main-20.txt */
+
+D.depositPolicies=D.depositPolicies||[];
+const syncWebSalesRemote_v145=syncWebSalesRemote;
+syncWebSalesRemote=async function(){
+  await syncWebSalesRemote_v145();
+  if(MODE==='auth'){
+    const rows=await safeQ('villa_booking_policies','villa_id,deposit_policy_mode,deposit_policy_value,deposit_due_hours');
+    D.depositPolicies=rows.map(x=>({villa:vcode(x.villa_id),villaId:+x.villa_id,mode:x.deposit_policy_mode||'manual',value:x.deposit_policy_value==null?null:+x.deposit_policy_value,due:x.deposit_due_hours==null?null:+x.deposit_due_hours}));
+  }
+};
+function depositPolicyLabel(p){if(!p||p.mode==='manual')return 'Chốt thủ công từng yêu cầu';if(p.mode==='none')return 'Không yêu cầu cọc';if(p.mode==='fixed')return `Cọc cố định ${fmt(p.value||0)}`;if(p.mode==='percent_total')return `Cọc ${Number(p.value||0)}% tổng giá`;return p.mode}
+function depositPolicyCard(){
+  const rows=VILLAS.map(v=>{const p=D.depositPolicies.find(x=>x.villa===v.code)||{villa:v.code,villaId:v.id,mode:'manual',value:null,due:null};return `<tr><td><b>${esc(v.name)}</b></td><td>${esc(depositPolicyLabel(p))}</td><td>${p.due==null?'Không đặt hạn':p.due+' giờ sau khi gửi yêu cầu'}</td><td>${ROLE==='admin'?`<button data-deposit-policy="${v.id}">Sửa chính sách</button>`:'—'}</td></tr>`}).join('');
+  return `<div class="card" id="depositPolicyCard" style="margin-top:14px"><div class="row" style="justify-content:space-between;align-items:center"><div><h3>Chính sách tiền cọc theo villa</h3><p class="muted">Mặc định hiện tại là thủ công. Có thể chọn: không cọc, số tiền cố định hoặc % tổng giá. Không tự áp một mức cọc mới nếu chưa được quản trị cấu hình.</p></div><span class="tag info">${D.depositPolicies.length||VILLAS.length} villa</span></div><div class="scroll"><table><tr><th>Villa</th><th>Chính sách</th><th>Hạn cọc</th><th></th></tr>${rows}</table></div></div>`;
+}
+function bindDepositPolicies(){
+  document.querySelectorAll('[data-deposit-policy]').forEach(b=>b.onclick=async()=>{
+    const villaId=+b.dataset.depositPolicy,p=D.depositPolicies.find(x=>x.villaId===villaId),v=VILLAS.find(x=>+x.id===villaId);if(!v)return;
+    const mode=(prompt(`Chính sách cọc cho ${v.name}: manual | none | fixed | percent_total`,p?.mode||'manual')||'').trim().toLowerCase();if(!mode)return;
+    if(!['manual','none','fixed','percent_total'].includes(mode))return toast('Chính sách không hợp lệ',true);
+    let value=null;if(mode==='fixed'||mode==='percent_total'){const s=prompt(mode==='fixed'?'Số tiền cọc cố định (VND):':'Tỷ lệ cọc trên tổng giá (%):',p?.value==null?'':String(p.value));if(s===null)return;value=Number(s);if(!Number.isFinite(value)||value<0||(mode==='percent_total'&&value>100))return toast('Giá trị cọc không hợp lệ',true)}
+    const d=prompt('Hạn cọc sau khi gửi yêu cầu (giờ). Để trống nếu không đặt hạn:',p?.due==null?'':String(p.due));if(d===null)return;const due=d.trim()===''?null:Number(d);if(due!=null&&(!Number.isFinite(due)||due<0))return toast('Số giờ không hợp lệ',true);
+    try{const {error}=await neon.rpc('admin_set_villa_deposit_policy',{p_villa_id:villaId,p_mode:mode,p_value:value,p_due_hours:due});if(error)throw new Error(dbError(error));toast('Đã cập nhật chính sách cọc');await syncWebSalesRemote();render()}catch(e){console.error(e);toast(e?.message||String(e),true)}
+  });
+}
+const render_v145=render;
+render=function(){render_v145();if(current==='websales'){const c=$('content');if(c&&!document.getElementById('depositPolicyCard'))c.insertAdjacentHTML('beforeend',depositPolicyCard());bindDepositPolicies()}};
+render();
+
+/* main-21.txt */
+D.channelEvents=D.channelEvents||[];
+const syncWebSalesRemote_v15=syncWebSalesRemote;
+syncWebSalesRemote=async function(){
+  await syncWebSalesRemote_v15();
+  if(MODE==='auth'){
+    const rows=await safeQ('channel_sync_events');
+    D.channelEvents=rows.map(x=>({id:+x.id,channelId:x.channel_id==null?null:+x.channel_id,villaId:x.villa_id==null?null:+x.villa_id,direction:x.direction,event:x.event_type,status:x.status,externalId:x.external_id||'',message:x.message||'',at:x.occurred_at})).sort((a,b)=>String(b.at).localeCompare(String(a.at)));
+  }
+};
+function otaSyncStats(c){
+  const maps=(D.channelMappings||[]).filter(m=>String(m.channelId)===String(c.id)&&m.active);
+  const ready=maps.filter(m=>m.externalProperty&&m.externalRoom).length;
+  const q=(D.channelOutbox||[]).filter(x=>x.channel===c.code);
+  return {maps:maps.length,ready,pending:q.filter(x=>x.status==='pending').length,waiting:q.filter(x=>x.status==='waiting_mapping').length,failed:q.filter(x=>x.status==='failed').length,sent:q.filter(x=>x.status==='sent').length};
+}
+function otaControlCard(){
+  const otas=(D.channels||[]).filter(c=>c.active&&c.type==='ota');
+  const rows=otas.map(c=>{const s=otaSyncStats(c),last=(D.channelEvents||[]).find(e=>String(e.channelId)===String(c.id)),canRetry=s.failed>0&&['admin','ops'].includes(ROLE);return `<tr><td><b>${esc(c.name)}</b><br><small>${esc(c.code)}</small></td><td>${s.ready}/${VILLAS.length}<br><small>${s.maps} mapping đang bật</small></td><td><span class="tag ${s.failed?'bad':s.pending?'info':s.waiting?'warning':'ok'}">${s.failed?`${s.failed} lỗi`:s.pending?`${s.pending} chờ gửi`:s.waiting?`${s.waiting} chờ mapping`:'Không có lỗi chờ xử lý'}</span><br><small>Đã gửi: ${s.sent}</small></td><td>${last?`${esc(last.direction)} · ${esc(last.event)}<br><small>${esc(last.status)} · ${String(last.at||'').slice(0,16).replace('T',' ')}</small>`:'—'}</td><td>${canRetry?`<button data-retry-channel="${esc(c.code)}">Gửi lại lỗi</button>`:'—'}</td></tr>`}).join('');
+  const totalReady=otas.reduce((n,c)=>n+otaSyncStats(c).ready,0),target=otas.length*VILLAS.length;
+  return `<div class="card" id="otaControlCard" style="margin-top:14px"><div class="row" style="justify-content:space-between;align-items:center"><div><h3>OTA Readiness & Sync Control</h3><p class="muted">Theo dõi mapping Property/Room ID và hàng đợi outbound. Chỉ sự kiện đủ mapping mới được đưa sang trạng thái chờ adapter gửi.</p></div><div class="actions"><span class="tag ${totalReady===target&&target?'ok':'warning'}">${totalReady}/${target||0} mapping OTA sẵn sàng</span><button id="openRatesFromOta">Giá & Kênh</button></div></div><div class="scroll"><table><tr><th>Kênh</th><th>Mapping sẵn sàng</th><th>Outbox</th><th>Sự kiện gần nhất</th><th></th></tr>${rows||'<tr><td colspan="5" class="empty">Chưa cấu hình OTA</td></tr>'}</table></div><div class="note warn" style="margin-top:12px"><b>Chưa gửi ra OTA thật:</b> adapter chỉ được bật khi ANSTAY có credential chính thức của từng OTA. Không lưu mật khẩu/API secret vào source hoặc trình duyệt.</div></div>`;
+}
+function bindOtaControl(){
+  $('openRatesFromOta')?.addEventListener('click',()=>{current='rates';renderNav();render()});
+  document.querySelectorAll('[data-retry-channel]').forEach(b=>b.onclick=async()=>{
+    const code=b.dataset.retryChannel,rows=(D.channelOutbox||[]).filter(x=>x.channel===code&&x.status==='failed');
+    if(!rows.length)return;
+    if(!confirm(`Đưa ${rows.length} sự kiện lỗi của ${code} về hàng chờ gửi lại?`))return;
+    try{
+      for(const x of rows){const {error}=await neon.rpc('admin_retry_channel_outbox',{p_outbox_id:x.id});if(error)throw new Error(dbError(error))}
+      toast(`Đã đưa ${rows.length} sự kiện về hàng chờ`);await syncWebSalesRemote();render();
+    }catch(e){console.error(e);toast(e?.message||String(e),true)}
+  });
+}
+const render_v15=render;
+render=function(){
+  render_v15();
+  if(current==='websales'){
+    const c=$('content');if(c&&!document.getElementById('otaControlCard'))c.insertAdjacentHTML('beforeend',otaControlCard());
+    bindOtaControl();
+  }
+};
+render();
+
+/* main-22.txt */
+D.otaPayouts=D.otaPayouts||[];D.otaPayoutLines=D.otaPayoutLines||[];D.channelInbox=D.channelInbox||[];D.channelReservations=D.channelReservations||[];
+const syncWebSalesRemote_v16=syncWebSalesRemote;
+syncWebSalesRemote=async function(){
+  await syncWebSalesRemote_v16();
+  if(MODE==='auth'){
+    const [payouts,lines,inbox,links]=await Promise.all([safeQ('ota_payouts'),safeQ('ota_payout_lines'),safeQ('channel_inbox_events'),safeQ('channel_reservations')]);
+    D.otaPayouts=payouts.map(x=>({id:+x.id,channel:x.channel_code,ref:x.payout_reference,periodStart:x.period_start,periodEnd:x.period_end,gross:+x.gross_amount||0,commission:+x.commission_amount||0,fees:+x.fee_amount||0,tax:+x.tax_amount||0,net:+x.net_amount||0,paidAt:x.paid_at,status:x.status,note:x.note||'',created:x.created_at})).sort((a,b)=>String(b.created).localeCompare(String(a.created)));
+    D.otaPayoutLines=lines.map(x=>({id:+x.id,payoutId:+x.payout_id,externalId:x.external_reservation_id,bookingId:x.booking_id==null?null:+x.booking_id,gross:+x.gross_amount||0,commission:+x.commission_amount||0,fees:+x.fee_amount||0,tax:+x.tax_amount||0,net:+x.net_amount||0,status:x.status,note:x.note||''}));
+    D.channelInbox=inbox.map(x=>({id:+x.id,channel:x.channel_code,eventId:x.external_event_id,event:x.event_type,status:x.status,error:x.last_error||'',at:x.received_at})).sort((a,b)=>String(b.at).localeCompare(String(a.at)));
+    D.channelReservations=links.map(x=>({id:+x.id,channel:x.channel_code,externalId:x.external_reservation_id,bookingId:+x.booking_id,status:x.external_status||'',at:x.last_seen_at}));
+  }
+};
+function payoutStatusLabel(s){return {imported:'Đã nhập',needs_attention:'Cần xử lý',ready:'Sẵn sàng đối soát',reconciled:'Đã đối soát'}[s]||s}
+function payoutStatusClass(s){return s==='reconciled'?'ok':s==='ready'?'info':s==='needs_attention'?'bad':'warning'}
+function payoutSums(id){const a=D.otaPayoutLines.filter(x=>x.payoutId===id);return {count:a.length,gross:a.reduce((n,x)=>n+x.gross,0),commission:a.reduce((n,x)=>n+x.commission,0),fees:a.reduce((n,x)=>n+x.fees,0),tax:a.reduce((n,x)=>n+x.tax,0),net:a.reduce((n,x)=>n+x.net,0),unmatched:a.filter(x=>!x.bookingId||['unmatched','disputed'].includes(x.status)).length}}
+function payoutCard(){
+  const canWrite=['admin','accounting'].includes(ROLE),payouts=D.otaPayouts,unmatched=D.otaPayoutLines.filter(x=>!x.bookingId||x.status==='unmatched'),ready=payouts.filter(x=>x.status==='ready'),reconciled=payouts.filter(x=>x.status==='reconciled');
+  const otaOptions=(D.channels||[]).filter(x=>x.type==='ota').map(x=>`<option value="${esc(x.code)}">${esc(x.name)}</option>`).join('');
+  return `<div class="card" id="otaPayoutCard" style="margin-top:14px"><div class="row" style="justify-content:space-between;align-items:center"><div><h3>Đối soát OTA Commission & Payout</h3><p class="muted">Payout chỉ ghi nhận <b>tiền thực thu</b> vào Booking Payments sau khi toàn bộ dòng đã ghép booking và tổng net khớp. Doanh thu ghi nhận không được cộng lại.</p></div><span class="tag ${unmatched.length?'bad':'ok'}">${unmatched.length} dòng chưa ghép</span></div><div class="grid kpis"><div class="kpi"><span>Payout đã nhập</span><b>${payouts.length}</b></div><div class="kpi"><span>Sẵn sàng đối soát</span><b>${ready.length}</b></div><div class="kpi"><span>Đã đối soát</span><b>${reconciled.length}</b></div><div class="kpi"><span>External reservation đã liên kết</span><b>${D.channelReservations.length}</b></div></div>${canWrite?`<div class="form"><label>OTA<select id="payChannel">${otaOptions}</select></label><label>Mã payout<input id="payRef" placeholder="Payout / remittance ID"></label><label>Từ ngày<input id="payFrom" type="date"></label><label>Đến ngày<input id="payTo" type="date"></label><label>Gross<input id="payGross" type="number" min="0" step="1000"></label><label>Commission<input id="payCommission" type="number" min="0" step="1000"></label><label>Phí khác<input id="payFees" type="number" min="0" step="1000"></label><label>Thuế/khấu trừ<input id="payTax" type="number" min="0" step="1000"></label><label>Net payout<input id="payNet" type="number" min="0" step="1000"></label><label>Ngày tiền về<input id="payPaidAt" type="date"></label></div><button class="primary" id="createPayout">Lưu / cập nhật payout</button>`:''}<div class="scroll" style="margin-top:14px"><table><tr><th>OTA / payout</th><th>Kỳ</th><th>Gross</th><th>Commission + phí</th><th>Net</th><th>Đối chiếu dòng</th><th>TT</th><th></th></tr>${payouts.slice(0,50).map(p=>{const s=payoutSums(p.id),netDiff=s.net-p.net;return `<tr><td><b>${esc(p.channel)}</b><br>${esc(p.ref)}</td><td>${p.periodStart||'—'} → ${p.periodEnd||'—'}<br><small>${p.paidAt?'Tiền về '+String(p.paidAt).slice(0,10):'Chưa ghi ngày tiền về'}</small></td><td>${fmt(p.gross)}</td><td>${fmt(p.commission+p.fees+p.tax)}<br><small>HH ${fmt(p.commission)} · phí ${fmt(p.fees)} · thuế ${fmt(p.tax)}</small></td><td><b>${fmt(p.net)}</b></td><td>${s.count} dòng · ${s.unmatched} chưa ghép<br><small>Net dòng ${fmt(s.net)} · lệch ${fmt(netDiff)}</small></td><td><span class="tag ${payoutStatusClass(p.status)}">${esc(payoutStatusLabel(p.status))}</span></td><td>${canWrite&&p.status!=='reconciled'?`<div class="actions"><button data-add-payout-line="${p.id}">+ Dòng</button>${p.status==='ready'&&p.paidAt?`<button class="primary" data-reconcile-payout="${p.id}">Đối soát</button>`:''}</div>`:'—'}</td></tr>`}).join('')||'<tr><td colspan="8" class="empty">Chưa có payout OTA</td></tr>'}</table></div><div class="grid two" style="margin-top:14px"><div><h4>Dòng payout cần ghép booking</h4><div class="scroll"><table><tr><th>OTA payout</th><th>External reservation</th><th>Net</th><th>Booking</th><th></th></tr>${unmatched.slice(0,80).map(x=>{const p=payouts.find(y=>y.id===x.payoutId);return `<tr><td>${esc(p?.channel||'')}<br><small>${esc(p?.ref||'')}</small></td><td><b>${esc(x.externalId)}</b></td><td>${fmt(x.net)}</td><td>${x.bookingId?esc(D.bookings.find(b=>b.id===x.bookingId)?.code||x.bookingId):'—'}</td><td>${canWrite?`<button data-match-payout-line="${x.id}">Ghép booking</button>`:'—'}</td></tr>`}).join('')||'<tr><td colspan="5" class="empty">Không có dòng chưa ghép</td></tr>'}</table></div></div><div><h4>Inbound OTA Inbox</h4><div class="scroll"><table><tr><th>Kênh</th><th>Sự kiện</th><th>TT</th><th>Thời gian</th></tr>${D.channelInbox.slice(0,40).map(x=>`<tr><td><b>${esc(x.channel)}</b><br><small>${esc(x.eventId)}</small></td><td>${esc(x.event)}</td><td><span class="tag ${x.status==='processed'?'ok':x.status==='failed'?'bad':'warning'}">${esc(x.status)}</span>${x.error?`<br><small>${esc(x.error)}</small>`:''}</td><td>${String(x.at||'').slice(0,16).replace('T',' ')}</td></tr>`).join('')||'<tr><td colspan="4" class="empty">Chưa nhận webhook OTA</td></tr>'}</table></div></div></div></div>`;
+}
+async function payoutRefresh(msg){if(msg)toast(msg);await syncWebSalesRemote();render()}
+function bindPayouts(){
+  $('createPayout')?.addEventListener('click',async()=>{const channel=$('payChannel').value,ref=$('payRef').value.trim();if(!ref)return toast('Cần nhập mã payout',true);const val=id=>Number($(id).value||0),paid=$('payPaidAt').value;try{const {error}=await neon.rpc('admin_record_ota_payout',{p_channel_code:channel,p_payout_reference:ref,p_period_start:$('payFrom').value||null,p_period_end:$('payTo').value||null,p_gross:val('payGross'),p_commission:val('payCommission'),p_fees:val('payFees'),p_tax:val('payTax'),p_net:val('payNet'),p_paid_at:paid?paid+'T12:00:00+07:00':null,p_note:null});if(error)throw new Error(dbError(error));await payoutRefresh('Đã lưu payout OTA')}catch(e){console.error(e);toast(e?.message||String(e),true)}});
+  document.querySelectorAll('[data-add-payout-line]').forEach(b=>b.onclick=async()=>{const id=+b.dataset.addPayoutLine,ext=(prompt('External reservation ID của OTA:','')||'').trim();if(!ext)return;const ask=(label)=>{const x=prompt(label,'0');return x===null?null:Number(x||0)};const gross=ask('Gross booking (VND):');if(gross===null)return;const commission=ask('Commission OTA (VND):');if(commission===null)return;const fees=ask('Phí khác (VND):');if(fees===null)return;const tax=ask('Thuế/khấu trừ (VND):');if(tax===null)return;const net=ask('Net payout của booking này (VND):');if(net===null)return;if([gross,commission,fees,tax,net].some(x=>!Number.isFinite(x)||x<0))return toast('Số tiền không hợp lệ',true);try{const {error}=await neon.rpc('admin_record_ota_payout_line',{p_payout_id:id,p_external_reservation_id:ext,p_gross:gross,p_commission:commission,p_fees:fees,p_tax:tax,p_net:net,p_note:null});if(error)throw new Error(dbError(error));await payoutRefresh('Đã thêm dòng payout')}catch(e){console.error(e);toast(e?.message||String(e),true)}});
+  document.querySelectorAll('[data-match-payout-line]').forEach(b=>b.onclick=async()=>{const id=+b.dataset.matchPayoutLine,code=(prompt('Nhập mã booking ANSTAY cần ghép:','')||'').trim();if(!code)return;const bk=D.bookings.find(x=>String(x.code).toUpperCase()===code.toUpperCase());if(!bk)return toast('Không tìm thấy booking trong hệ thống',true);try{const {error}=await neon.rpc('admin_match_ota_payout_line',{p_line_id:id,p_booking_id:bk.id});if(error)throw new Error(dbError(error));await payoutRefresh('Đã ghép dòng payout với booking')}catch(e){console.error(e);toast(e?.message||String(e),true)}});
+  document.querySelectorAll('[data-reconcile-payout]').forEach(b=>b.onclick=async()=>{const id=+b.dataset.reconcilePayout,p=D.otaPayouts.find(x=>x.id===id),s=payoutSums(id);if(!p)return;if(s.unmatched)return toast('Còn dòng chưa ghép booking',true);if(Math.abs(s.net-p.net)>1)return toast('Tổng net các dòng chưa khớp payout',true);if(!confirm(`Đối soát ${p.channel} ${p.ref} và ghi ${fmt(p.net)} vào sổ tiền thực thu của các booking?`))return;try{const {data,error}=await neon.rpc('admin_reconcile_ota_payout',{p_payout_id:id});if(error)throw new Error(dbError(error));await loadRemote();toast(`Đã đối soát · tạo ${data?.booking_payments_created||0} dòng tiền thu`)}catch(e){console.error(e);toast(e?.message||String(e),true)}});
+}
+const render_v16=render;
+render=function(){render_v16();if(current==='websales'){const c=$('content');if(c&&!document.getElementById('otaPayoutCard'))c.insertAdjacentHTML('beforeend',payoutCard());bindPayouts()}};
+render();
+
