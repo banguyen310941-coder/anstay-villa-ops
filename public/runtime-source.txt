@@ -880,6 +880,8 @@ function v19Enhance(){v19Styles();v19Shell();v19EnhanceNav();v19EnhanceProbar();
 const renderNav_v19=renderNav;renderNav=function(){renderNav_v19();v19EnhanceNav()};
 const render_v19=render;render=function(){render_v19();v19Enhance()};
 
+window.addEventListener('click',e=>{const t=e.target.closest('#newRatePlan,[data-web-quote],[data-web-pay],[data-web-reject],[data-deposit-policy],[data-settlement-pay],[data-add-payout-line],[data-match-payout-line]');if(t&&v19InterceptAction(t)){e.preventDefault();e.stopPropagation();e.stopImmediatePropagation()}},true);
+
 document.addEventListener('click',e=>{
  if(e.target.closest('#v19Alerts')){v19OpenDrawer();return}
  if(e.target.closest('#v19Cmd')){v19OpenPalette();return}
