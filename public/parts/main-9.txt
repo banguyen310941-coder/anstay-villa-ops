@@ -2,4 +2,4 @@ function ensureV09Collections(){D.payments=D.payments||[];D.commercial=D.commerc
 $('demoBtn')?.addEventListener('click',()=>{ensureV09Collections()});
 ensureV09Collections();
 document.addEventListener('input',e=>{if(['cGross','cDiscount','cRefund','cOta','cTax'].includes(e.target?.id))e.stopPropagation()},true);
-if(new URLSearchParams(location.search).get('demo')==='1')setTimeout(()=>$('demoBtn')?.click(),0);
+
