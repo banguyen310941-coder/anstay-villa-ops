@@ -84,7 +84,7 @@ function v19OpenDrawer(){
  const issues=v19Issues();$('v19Drawer').innerHTML='<div class="v19-drawer-head"><div><h3>Việc cần xử lý</h3><p class="muted">Tổng hợp trực tiếp từ dữ liệu đang vận hành.</p></div><button id="v19DrawerClose">✕</button></div><div class="v19-drawer-body">'+issues.map(x=>'<div class="v19-task '+x.level+'" data-v19-go="'+x.module+'"><i></i><div><b>'+esc(x.title)+'</b><small>'+esc(x.detail)+'</small></div></div>').join('')+'</div>';$('v19Backdrop').classList.add('open');$('v19Drawer').classList.add('open');$('v19DrawerClose').onclick=v19CloseDrawer
 }
 function v19CloseDrawer(){$('v19Backdrop')?.classList.remove('open');$('v19Drawer')?.classList.remove('open')}
-function v19Commands(){const allowed=MODE==='demo'?NAV.map(x=>x[0]):(ACCESS[ROLE]||ACCESS.employee);return NAV.filter(x=>allowed.includes(x[0])).map(x=>({key:x[0],title:x[2],sub:x[3]}))}
+function v19Commands(){const allowed=ACCESS[ROLE]||ACCESS.employee;return NAV.filter(x=>allowed.includes(x[0])).map(x=>({key:x[0],title:x[2],sub:x[3]}))}
 function v19OpenPalette(){v19Shell();$('v19Palette').classList.add('open');$('v19CmdInput').value='';v19RenderCommands();setTimeout(()=>$('v19CmdInput').focus(),20)}
 function v19ClosePalette(){$('v19Palette')?.classList.remove('open')}
 function v19RenderCommands(){const q=String($('v19CmdInput')?.value||'').trim().toLowerCase(),rows=v19Commands().filter(x=>!q||x.title.toLowerCase().includes(q)||x.sub.toLowerCase().includes(q));$('v19CmdList').innerHTML=rows.map((x,i)=>'<button class="v19-command '+(i===0?'active':'')+'" data-cmd-nav="'+x.key+'"><span><b>'+esc(x.title)+'</b><small>'+esc(x.sub)+'</small></span><span class="v19-key">Enter</span></button>').join('')||'<div class="v19-empty">Không tìm thấy module phù hợp.</div>'}
