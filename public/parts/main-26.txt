@@ -17,7 +17,7 @@ const V20_ROUTE_META={
 };
 
 function v20Allowed(k){
- const allowed=MODE==='demo'?NAV.map(x=>x[0]):(ACCESS[ROLE]||ACCESS.employee);
+ const allowed=ACCESS[ROLE]||ACCESS.employee;
  return allowed.includes(k)
 }
 function v20RouteError(k,error){
