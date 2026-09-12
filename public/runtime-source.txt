@@ -659,3 +659,94 @@ document.addEventListener('click',e=>{
 setInterval(()=>{if(MODE==='auth'&&LIVE_MODULES.has(current)&&!document.hidden)liveModuleSync(current,false)},60000);
 render();
 
+
+/* main-24.txt */
+
+/* v1.8 UI + practical editors */
+let PRO_EDITOR=null;
+function proStyles(){
+ if(document.getElementById('proStyles'))return;
+ const s=document.createElement('style');s.id='proStyles';s.textContent=\`
+ :root{--pbg:#f4f7f7;--pc:#fff;--pt:#172525;--pm:#6d7c7b;--pl:#dfe8e7;--pa:#0f766e}
+ body,main{background:var(--pbg)!important;color:var(--pt)!important}.layout{min-height:100vh}
+ #sidebar{width:268px!important;background:linear-gradient(180deg,#0b2624,#103b37)!important;box-shadow:12px 0 32px rgba(15,58,55,.1)}
+ .brand{padding:24px 22px 18px!important;font-size:24px!important}.brand small{display:block;margin-top:6px;opacity:.62;font-size:11px!important}
+ #nav{padding:4px 12px 18px!important;display:flex!important;flex-direction:column;gap:5px}
+ #nav button{border:0!important;background:transparent!important;color:rgba(255,255,255,.76)!important;border-radius:12px!important;padding:11px 12px!important;text-align:left!important;font-weight:650!important}
+ #nav button:hover,#nav button.active{background:rgba(255,255,255,.11)!important;color:#fff!important}#nav button.active{box-shadow:inset 3px 0 0 #7ee0d4}
+ main>header{position:sticky!important;top:0;z-index:30;background:rgba(244,247,247,.91)!important;backdrop-filter:blur(14px);border-bottom:1px solid var(--pl)!important;padding:14px 24px!important}
+ #content{padding:22px 24px 44px!important}.view{max-width:1480px;margin:auto}.grid{gap:16px!important}
+ .card,.kpi,.note{border:1px solid var(--pl)!important;border-radius:16px!important;box-shadow:0 7px 24px rgba(18,57,53,.055)!important}.card{background:#fff!important;padding:20px!important}
+ .kpi{background:linear-gradient(180deg,#fff,#fbfdfd)!important;padding:17px 18px!important;min-height:90px}.kpi span{color:var(--pm)!important;font-size:12px!important;text-transform:uppercase;letter-spacing:.05em}.kpi b{font-size:24px!important}
+ input,select,textarea{border:1px solid #ccd9d7!important;background:#fff!important;border-radius:10px!important;padding:10px 11px!important;min-height:40px!important;outline:none!important}
+ input:focus,select:focus,textarea:focus{border-color:#66aaa4!important;box-shadow:0 0 0 3px rgba(15,118,110,.1)!important}
+ button{border-radius:10px!important;min-height:38px!important;padding:8px 13px!important;font-weight:700!important;border:1px solid #cedbd9!important;background:#fff!important;color:#294340!important}
+ button.primary{background:linear-gradient(135deg,#0f766e,#115e59)!important;color:#fff!important;border-color:transparent!important}
+ .scroll{border:1px solid var(--pl);border-radius:13px;overflow:auto!important;background:#fff}table th{position:sticky;top:0;background:#f5f9f8!important;color:#586967!important;font-size:11px!important;text-transform:uppercase;letter-spacing:.04em}table th,table td{padding:11px 12px!important;border-bottom:1px solid #edf2f1!important}
+ .probar{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:0 0 14px;padding:10px 12px;background:#fff;border:1px solid var(--pl);border-radius:14px}.probar>div{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.probar input{min-width:260px;min-height:36px!important}.live-dot{width:8px;height:8px;border-radius:50%;background:#21a179;box-shadow:0 0 0 4px rgba(33,161,121,.12)}
+ .healthgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:14px}.health{border:1px solid var(--pl);border-radius:13px;padding:13px;background:#fbfdfd}.health b,.health small{display:block}.health small{color:var(--pm);min-height:30px}.hstate{display:inline-flex;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:800;margin-top:7px;background:#edf1f1}.hstate.ok{background:#e7f7ee;color:#23724a}.hstate.bad{background:#fdebea;color:#a33832}.hstate.wait{background:#fff4dc;color:#8a651d}
+ .promodal{position:fixed;inset:0;z-index:1000;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(9,29,27,.46);backdrop-filter:blur(4px)}.promodal.open{display:flex}.promodal-box{width:min(620px,100%);background:#fff;border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.24);padding:22px}.promodal-head,.promodal-foot{display:flex;justify-content:space-between;gap:10px;align-items:center}.promodal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:15px}.promodal-grid .full{grid-column:1/-1}.promodal-foot{justify-content:flex-end;margin-top:18px}.editbtn{margin-right:6px!important}
+ .auth-gate{background:radial-gradient(circle at 20% 20%,#174b46,#0d2f2c 42%,#071b19)!important}.auth-card{border-radius:22px!important;box-shadow:0 26px 80px rgba(0,0,0,.28)!important}
+ @media(max-width:800px){#content{padding:14px 12px 34px!important}.grid.two,.grid.kpis,.healthgrid{grid-template-columns:1fr!important}.card{padding:15px!important}.probar{flex-direction:column;align-items:stretch}.probar input{min-width:0;width:100%}.promodal-grid{grid-template-columns:1fr}.promodal-grid .full{grid-column:auto}}
+ \`;document.head.appendChild(s)
+}
+function proModal(){
+ if(document.getElementById('proModal'))return;
+ const m=document.createElement('div');m.id='proModal';m.className='promodal';m.innerHTML='<div class="promodal-box"><div class="promodal-head"><div><h3 id="proTitle">Chỉnh sửa</h3><p id="proSub" class="muted"></p></div><button id="proClose">✕</button></div><div id="proBody"></div><div class="promodal-foot"><button id="proCancel">Hủy</button><button class="primary" id="proSave">Lưu thay đổi</button></div></div>';document.body.appendChild(m);
+ const close=()=>{m.classList.remove('open');PRO_EDITOR=null};$('proClose').onclick=close;$('proCancel').onclick=close;$('proSave').onclick=saveProEdit;m.onclick=e=>{if(e.target===m)close()}
+}
+function opts(a,v){return a.map(x=>'<option value="'+x[0]+'" '+(String(x[0])===String(v)?'selected':'')+'>'+x[1]+'</option>').join('')}
+function openProEdit(type,id){
+ proModal();PRO_EDITOR={type,id};let x,title,sub,html='';
+ if(type==='lead'){x=D.leads.find(v=>v.id===id);if(!x)return;title='Cập nhật lead';sub=(x.name||'')+' · '+(x.phone||'');html='<div class="promodal-grid"><label>Trạng thái<select id="peStatus">'+opts([['new','Mới'],['contacted','Đã liên hệ'],['quoted','Đã báo giá'],['deposit','Đã cọc'],['won','Thắng'],['lost','Thua']],x.status)+'</select></label><label>Giá trị dự kiến<input id="peValue" type="number" min="0" value="'+(+x.value||0)+'"></label><label class="full">Chiến dịch<input id="peCampaign" value="'+esc(x.campaign||'')+'"></label></div>'}
+ if(type==='booking'){x=D.bookings.find(v=>v.id===id);if(!x)return;title='Cập nhật booking';sub=(x.code||'')+' · '+vname(x.villa)+' · '+(x.guest||'');html='<div class="promodal-grid"><label>Trạng thái<select id="peStatus">'+opts([['hold','Giữ chỗ'],['confirmed','Đã xác nhận'],['staying','Đang ở'],['checked_out','Đã check-out'],['cancelled','Hủy']],x.status)+'</select></label><label>Số khách<input id="peGuests" type="number" min="1" value="'+(+x.guests||1)+'"></label><label>DT phòng<input id="peRoom" type="number" min="0" value="'+(+x.room||0)+'"></label><label>DT khác<input id="peOther" type="number" min="0" value="'+(+x.other||0)+'"></label><label class="full">Hóa đơn<select id="peInvoice">'+opts([['undetermined','Chưa xác định'],['pending','Chờ xuất'],['issued','Đã xuất'],['not_applicable','Không áp dụng'],['adjusted','Đã điều chỉnh']],x.invoice)+'</select></label></div><div class="note" style="margin-top:14px"><b>Tiền thực thu sửa ở Sổ thu tiền booking</b><br><span class="muted">Tách doanh thu và dòng tiền để không cộng trùng.</span></div>'}
+ if(type==='finance'){x=D.finance.find(v=>v.id===id);if(!x)return;title='Cập nhật khoản thu / chi';sub=(x.date||'')+' · '+vname(x.villa)+' · '+fmt(x.amount);html='<div class="promodal-grid"><label>Thanh toán<select id="pePaid">'+opts([['yes','Đã thanh toán'],['no','Chưa thanh toán']],x.paid?'yes':'no')+'</select></label><label>Hạn thanh toán<input id="peDue" type="date" value="'+esc(x.due||'')+'"></label><label class="full">Hóa đơn<select id="peInvoice">'+opts([['undetermined','Chưa xác định'],['pending','Chờ xuất'],['issued','Đã xuất'],['not_applicable','Không áp dụng'],['adjusted','Đã điều chỉnh']],x.invoice)+'</select></label></div>'}
+ $('proTitle').textContent=title;$('proSub').textContent=sub;$('proBody').innerHTML=html;$('proModal').classList.add('open')
+}
+async function saveProEdit(){
+ if(!PRO_EDITOR)return;const {type,id}=PRO_EDITOR;
+ try{
+  if(type==='lead'){const x=D.leads.find(v=>v.id===id),r={status:$('peStatus').value,expected_value:+$('peValue').value||0,campaign:$('peCampaign').value.trim()||null};if(MODE==='auth')await update('leads',id,r);else Object.assign(x,{status:r.status,value:r.expected_value,campaign:r.campaign||''})}
+  if(type==='booking'){const x=D.bookings.find(v=>v.id===id),s=$('peStatus').value;if(s==='cancelled'&&x.status!=='cancelled'&&!confirm('Hủy booking này?'))return;const r={status:s,guests:Math.max(1,+$('peGuests').value||1),room_revenue:Math.max(0,+$('peRoom').value||0),other_revenue:Math.max(0,+$('peOther').value||0),invoice_status:$('peInvoice').value};if(MODE==='auth')await update('bookings',id,r);else Object.assign(x,{status:r.status,guests:r.guests,room:r.room_revenue,other:r.other_revenue,invoice:r.invoice_status})}
+  if(type==='finance'){const x=D.finance.find(v=>v.id===id),r={paid:$('pePaid').value==='yes',due_date:$('peDue').value||null,invoice_status:$('peInvoice').value};if(MODE==='auth')await update('finance_transactions',id,r);else Object.assign(x,{paid:r.paid,due:r.due_date,invoice:r.invoice_status})}
+  $('proModal').classList.remove('open');PRO_EDITOR=null;toast('Đã lưu thay đổi');if(MODE==='auth')await refresh();else{localStorage.setItem(STORE,JSON.stringify(D));render()}
+ }catch(e){console.error(e);toast(e?.message||String(e),true)}
+}
+function quickEditors(){
+ if(current==='crm')document.querySelectorAll('[data-del-lead]').forEach(b=>{if(!b.parentElement.querySelector('[data-edit-lead]'))b.insertAdjacentHTML('beforebegin','<button class="editbtn" data-edit-lead="'+b.dataset.delLead+'">Sửa</button>')});
+ if(current==='booking')document.querySelectorAll('[data-del-booking]').forEach(b=>{if(!b.parentElement.querySelector('[data-edit-booking]'))b.insertAdjacentHTML('beforebegin','<button class="editbtn" data-edit-booking="'+b.dataset.delBooking+'">Sửa</button>')});
+ if(current==='fin')document.querySelectorAll('[data-del-fin]').forEach(b=>{if(!b.parentElement.querySelector('[data-edit-fin]'))b.insertAdjacentHTML('beforebegin','<button class="editbtn" data-edit-fin="'+b.dataset.delFin+'">Sửa</button>')})
+}
+function proBar(){
+ if(current==='dash'||document.getElementById('proBar'))return;const v=$('content')?.querySelector('.view');if(!v)return;
+ v.insertAdjacentHTML('afterbegin','<div class="probar" id="proBar"><div><span class="live-dot"></span><b>'+(MODE==='auth'?'Dữ liệu thật':'Demo local')+'</b><input id="proSearch" placeholder="Tìm nhanh trong các bảng của trang..."></div><div><button id="proRefresh">↻ Làm mới</button></div></div>')
+}
+function filterTables(q){q=String(q||'').trim().toLowerCase();$('content')?.querySelectorAll('table').forEach(t=>Array.from(t.querySelectorAll('tr')).slice(1).forEach(r=>r.style.display=!q||r.textContent.toLowerCase().includes(q)?'':'none'))}
+function hbox(id,n){return '<div class="health" id="h-'+id+'"><b>'+n+'</b><small>Chưa kiểm tra</small><span class="hstate">Chưa chạy</span></div>'}
+function hset(id,s,d){const e=$('h-'+id);if(!e)return;e.querySelector('small').textContent=d;const x=e.querySelector('.hstate');x.className='hstate '+(s==='ok'?'ok':s==='bad'?'bad':'wait');x.textContent=s==='ok'?'Hoạt động':s==='bad'?'Lỗi':'Đang kiểm tra'}
+function realSettings(){
+ if(current!=='settings')return;const v=$('content')?.querySelector('.view');if(!v||$('systemCenter'))return;
+ const old=Array.from(v.querySelectorAll('.card')).find(c=>c.querySelector('h3')?.textContent.trim()==='Trạng thái hệ thống');old?.remove();
+ v.insertAdjacentHTML('afterbegin','<div class="card" id="systemCenter" style="margin-bottom:16px"><div class="row" style="justify-content:space-between;align-items:center"><div><h3>Trung tâm kiểm tra hệ thống</h3><p class="muted">Kiểm tra trực tiếp database, Booking API và Channel Gateway.</p></div><div class="actions"><button id="exportSnap">Xuất snapshot</button><button class="primary" id="systemCheck">Kiểm tra ngay</button></div></div><div class="healthgrid">'+hbox('app','App vận hành')+hbox('auth','Phiên đăng nhập')+hbox('db','Neon Database')+hbox('booking','Booking API')+hbox('gateway','Channel Gateway')+hbox('data','Dữ liệu nghiệp vụ')+hbox('rates','Giá bán')+hbox('queue','Hàng đợi OTA')+'</div></div>');
+ hset('app','ok',location.host+' · giao diện đã tải');hset('data','ok',(D.bookings||[]).length+' booking · '+(D.leads||[]).length+' lead · '+(D.tasks||[]).length+' việc');hset('rates','ok',(D.rateCalendar||[]).filter(x=>x.published&&!x.stopSell&&x.baseRate>0).length+' ngày giá published');const q=(D.channelOutbox||[]).filter(x=>['pending','failed','waiting_mapping'].includes(x.status)).length;hset('queue',q?'wait':'ok',q+' sự kiện chưa hoàn tất')
+}
+async function systemCheck(){
+ ['auth','db','booking','gateway'].forEach(x=>hset(x,'wait','Đang kiểm tra...'));hset('auth',MODE==='auth'&&SESSION?.user?.id?'ok':'bad',MODE==='auth'?(SESSION?.user?.email||'Đã có session'):'Demo local');
+ if(MODE==='auth')try{const {error}=await neon.from('villas').select('id').limit(1);if(error)throw new Error(dbError(error));hset('db','ok','Neon truy vấn thành công')}catch(e){hset('db','bad',e?.message||String(e))}else hset('db','wait','Demo local');
+ const t=new Date();t.setDate(t.getDate()+1);const u=new Date(t);u.setDate(t.getDate()+1);
+ try{const r=await fetch('/api/public/search?'+new URLSearchParams({check_in:day(t),check_out:day(u),guests:'2',channel:'WEBSITE',rate_plan:'BAR'}),{cache:'no-store'}),d=await r.json();if(!r.ok)throw new Error(d?.message||'HTTP '+r.status);hset('booking','ok','API 200 · '+(d.sellable_count||0)+' villa bán được ngày thử')}catch(e){hset('booking','bad',e?.message||String(e))}
+ try{const r=await fetch('/api/v1/health',{cache:'no-store'}),d=await r.json();if(!r.ok)throw new Error(d?.error||'HTTP '+r.status);hset('gateway','ok','Gateway '+(d.version||'')+' · '+(d.status||'ready'))}catch(e){hset('gateway','bad',e?.message||String(e))}
+}
+function exportSnap(){const b=new Blob([JSON.stringify({exported_at:new Date().toISOString(),mode:MODE,role:ROLE,villas:VILLAS,data:D},null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='anstay-ops-snapshot-'+day()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('Đã xuất snapshot')}
+function proEnhance(){proStyles();proModal();proBar();quickEditors();realSettings()}
+const render_v18=render;render=function(){render_v18();proEnhance()};
+document.addEventListener('click',e=>{
+ let x=e.target.closest('[data-edit-lead]');if(x){openProEdit('lead',+x.dataset.editLead);return}
+ x=e.target.closest('[data-edit-booking]');if(x){openProEdit('booking',+x.dataset.editBooking);return}
+ x=e.target.closest('[data-edit-fin]');if(x){openProEdit('finance',+x.dataset.editFin);return}
+ if(e.target.closest('#proRefresh')){if(typeof liveModuleSync==='function'&&LIVE_MODULES?.has(current))liveModuleSync(current,true);else refresh();return}
+ if(e.target.closest('#systemCheck')){systemCheck();return}if(e.target.closest('#exportSnap')){exportSnap();return}
+},true);
+document.addEventListener('input',e=>{if(e.target?.id==='proSearch')filterTables(e.target.value)},true);
+proStyles();render();
+
