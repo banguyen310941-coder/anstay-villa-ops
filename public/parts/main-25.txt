@@ -62,9 +62,10 @@ function v19Issues(){
 }
 
 function v19Shell(){
+ if(MODE==='locked')return;
  if(!$('v19Backdrop')){
   const b=document.createElement('div');b.id='v19Backdrop';b.className='v19-backdrop';document.body.appendChild(b);
-  const d=document.createElement('aside');d.id='v19Drawer';d.className='v19-drawer';document.body.appendChild(d);
+  const d=document.createElement('div');d.id='v19Drawer';d.className='v19-drawer';document.body.appendChild(d);
   const p=document.createElement('div');p.id='v19Palette';p.className='v19-palette';p.innerHTML='<div class="v19-palette-box"><input id="v19CmdInput" placeholder="Tìm module hoặc thao tác..."><div id="v19CmdList" class="v19-palette-list"></div></div>';document.body.appendChild(p);
   const m=document.createElement('div');m.id='v19Action';m.className='v19-action';m.innerHTML='<div class="v19-action-box"><div class="v19-action-head"><div><h3 id="v19ActionTitle"></h3><p id="v19ActionSub" class="muted"></p></div><button id="v19ActionClose">✕</button></div><form id="v19ActionForm"><div id="v19ActionFields" class="v19-action-form"></div><div class="v19-action-foot"><button type="button" id="v19ActionCancel">Hủy</button><button type="submit" class="primary" id="v19ActionSubmit">Lưu</button></div></form></div>';document.body.appendChild(m);
   $('v19Backdrop').onclick=v19CloseDrawer;$('v19ActionClose').onclick=v19CloseAction;$('v19ActionCancel').onclick=v19CloseAction;$('v19ActionForm').onsubmit=v19SubmitAction;$('v19CmdInput').addEventListener('input',v19RenderCommands)
