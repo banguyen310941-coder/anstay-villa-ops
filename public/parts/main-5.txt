@@ -1,14 +1,10 @@
 const params=new URLSearchParams(location.search),resetToken=params.get('token');
-D=loadLocal();
+D=blank();
+try{localStorage.removeItem(STORE)}catch{}
 if(resetToken){
   applyAccess();render();
   $('loginPane').classList.add('hidden');$('resetPane').classList.remove('hidden');$('authLead').textContent='Đặt mật khẩu mới cho tài khoản quản trị.';
   checkSession();
-}else if(params.get('demo')==='1'){
-  MODE='demo';ROLE='admin';VILLAS=[...FALLBACK_VILLAS];
-  $('authGate').classList.add('hidden');$('userPill').textContent='Demo cục bộ';
-  applyAccess();render();
-  setTimeout(()=>toast('Đang xem bản demo ANSTAY'),50);
 }else{
   applyAccess();render();checkSession();
 }
