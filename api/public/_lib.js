@@ -1,9 +1,26 @@
 import { createClient } from '@neondatabase/neon-js';
 
 const BASE_URL='https://ep-dawn-dawn-a5y0y7ou.us-east-2.aws.neon.tech/anstay';
+const ALLOWED_ORIGINS=new Set(['https://anstay.vn','https://www.anstay.vn']);
 let neon;
 function client(){if(!neon)neon=createClient(BASE_URL,{auth:{allowAnonymous:true}});return neon}
 
+export function cors(req,res){
+  const origin=String(req.headers?.origin||'').trim();
+  if(origin&&ALLOWED_ORIGINS.has(origin)){
+    res.setHeader('Access-Control-Allow-Origin',origin);
+    res.setHeader('Vary','Origin');
+    res.setHeader('Access-Control-Allow-Methods','GET,POST,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers','Content-Type');
+    res.setHeader('Access-Control-Max-Age','86400');
+  }
+  if(req.method==='OPTIONS'){
+    res.statusCode=origin&&ALLOWED_ORIGINS.has(origin)?204:403;
+    res.end();
+    return true;
+  }
+  return false;
+}
 export function send(res,status,body){
   res.statusCode=status;
   res.setHeader('Content-Type','application/json; charset=utf-8');
