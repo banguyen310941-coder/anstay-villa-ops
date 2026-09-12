@@ -1,0 +1,143 @@
+
+/* v1.9 Professional workspace */
+let V19_ACTION=null;
+const V19_GROUPS=[
+ ['Kinh doanh',['dash','crm','booking','websales']],
+ ['Vận hành',['ops','inventoryControl','att','stock']],
+ ['Doanh thu & Kênh',['rates']],
+ ['Tài chính & Quản trị',['fin','reports','settings']]
+];
+
+function v19Styles(){
+ if(document.getElementById('v19Styles'))return;
+ const s=document.createElement('style');s.id='v19Styles';
+ s.textContent=".nav-group-title{padding:14px 12px 5px;color:rgba(255,255,255,.38);font-size:9px;font-weight:850;letter-spacing:.13em;text-transform:uppercase}#nav button{display:flex!important;align-items:center;justify-content:space-between;gap:8px}.nav-badge{min-width:20px;height:20px;padding:0 6px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,.13);color:#fff;font-size:10px;font-weight:850}#nav button.active .nav-badge{background:#fff;color:#0f5f58}.v19-headbtn{position:relative;min-width:38px;padding:7px 10px!important}.v19-count{position:absolute;right:-5px;top:-6px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#d5534a;color:white;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;border:2px solid #f4f7f7}.v19-drawer{position:fixed;top:0;right:0;bottom:0;width:min(440px,94vw);background:#fff;z-index:1500;transform:translateX(104%);transition:.22s ease;box-shadow:-20px 0 60px rgba(7,35,32,.2);display:flex;flex-direction:column}.v19-drawer.open{transform:none}.v19-backdrop{position:fixed;inset:0;background:rgba(8,30,28,.34);z-index:1490;display:none;backdrop-filter:blur(3px)}.v19-backdrop.open{display:block}.v19-drawer-head{padding:20px;border-bottom:1px solid #dfe8e7;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.v19-drawer-head h3{margin:0;font-size:20px}.v19-drawer-head p{margin:5px 0 0}.v19-drawer-body{padding:14px;overflow:auto}.v19-task{display:flex;gap:12px;padding:13px;border:1px solid #e4eceb;border-radius:13px;margin-bottom:9px;cursor:pointer}.v19-task:hover{background:#f7fbfa}.v19-task i{width:9px;height:9px;border-radius:50%;background:#dd9b28;margin-top:5px;flex:0 0 auto}.v19-task.bad i{background:#d5534a}.v19-task.ok i{background:#21a179}.v19-task b,.v19-task small{display:block}.v19-task small{color:#6d7c7b;margin-top:4px;line-height:1.45}.v19-palette{position:fixed;inset:0;z-index:1600;display:none;align-items:flex-start;justify-content:center;padding:11vh 16px 20px;background:rgba(8,30,28,.36);backdrop-filter:blur(5px)}.v19-palette.open{display:flex}.v19-palette-box{width:min(720px,100%);background:#fff;border-radius:18px;box-shadow:0 28px 90px rgba(0,0,0,.25);overflow:hidden}.v19-palette input{width:100%;border:0!important;border-radius:0!important;padding:17px 18px!important;font-size:17px!important;box-shadow:none!important;border-bottom:1px solid #e5eceb!important}.v19-palette-list{padding:8px;max-height:56vh;overflow:auto}.v19-command{display:flex;justify-content:space-between;gap:12px;width:100%;border:0!important;background:#fff!important;text-align:left;padding:11px 12px!important;border-radius:11px!important}.v19-command:hover,.v19-command.active{background:#f0f8f6!important}.v19-command span{display:block}.v19-command small{color:#71817f}.v19-key{border:1px solid #dbe5e3;border-bottom-width:2px;border-radius:6px;padding:2px 6px;font-size:10px;color:#71817f;background:#fafcfc}.v19-action{position:fixed;inset:0;z-index:1700;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(8,30,28,.42);backdrop-filter:blur(4px)}.v19-action.open{display:flex}.v19-action-box{width:min(620px,100%);max-height:86vh;overflow:auto;background:#fff;border-radius:18px;box-shadow:0 28px 90px rgba(0,0,0,.25);padding:22px}.v19-action-head{display:flex;justify-content:space-between;gap:12px}.v19-action-head h3{margin:0;font-size:20px}.v19-action-head p{margin:5px 0 0}.v19-action-form{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}.v19-action-form .full{grid-column:1/-1}.v19-action-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;padding-top:14px;border-top:1px solid #e7eeee}.v19-empty{padding:26px;text-align:center;color:#71817f;border:1px dashed #dbe5e3;border-radius:13px}@media(max-width:760px){.v19-action-form{grid-template-columns:1fr}.v19-action-form .full{grid-column:auto}.v19-drawer{width:96vw}}";
+ document.head.appendChild(s)
+}
+
+function v19Metrics(){
+ const today=day();
+ const qty=id=>(D.moves||[]).filter(m=>String(m.item)===String(id)).reduce((n,m)=>n+(['out','issue'].includes(m.type)?-(+m.qty||0):(+m.qty||0)),0);
+ const low=(D.items||[]).filter(i=>qty(i.id)<(+i.min||0)).length;
+ return {
+  crm:(D.leads||[]).filter(x=>x.status==='new').length,
+  booking:(D.bookings||[]).filter(x=>x.in===today&&x.status!=='cancelled').length,
+  ops:(D.tasks||[]).filter(x=>!['completed','cancelled'].includes(x.status||(x.done?'completed':'open'))&&x.due&&new Date(x.due)<new Date()).length,
+  stock:low,
+  fin:(D.finance||[]).filter(x=>x.dir==='out'&&!x.paid&&x.due&&x.due<today).length,
+  websales:(D.websiteRequests||[]).filter(x=>!['confirmed','rejected','cancelled'].includes(x.status)).length,
+  rates:(D.rateCalendar||[]).filter(x=>!x.published&&x.baseRate>0&&x.date>=today).length
+ }
+}
+function v19EnhanceNav(){
+ const nav=$('nav');if(!nav)return;
+ nav.querySelectorAll('.nav-group-title').forEach(x=>x.remove());
+ const metric=v19Metrics();
+ V19_GROUPS.forEach(g=>{
+  const first=g[1].map(k=>nav.querySelector('button[data-k="'+k+'"]')).find(Boolean);if(!first)return;
+  const h=document.createElement('div');h.className='nav-group-title';h.textContent=g[0];nav.insertBefore(h,first)
+ });
+ nav.querySelectorAll('button[data-k]').forEach(b=>{
+  b.querySelector('.nav-badge')?.remove();const n=metric[b.dataset.k]||0;
+  if(n>0){const x=document.createElement('span');x.className='nav-badge';x.textContent=n>99?'99+':String(n);b.appendChild(x)}
+ })
+}
+
+function v19Issues(){
+ const today=day(),a=[];
+ const overdueTasks=(D.tasks||[]).filter(x=>!['completed','cancelled'].includes(x.status||(x.done?'completed':'open'))&&x.due&&new Date(x.due)<new Date());
+ const web=(D.websiteRequests||[]).filter(x=>!['confirmed','rejected','cancelled'].includes(x.status));
+ const overdueFin=(D.finance||[]).filter(x=>x.dir==='out'&&!x.paid&&x.due&&x.due<today);
+ const unrec=(D.payments||[]).filter(x=>!x.reconciled);
+ const ota=(D.channelOutbox||[]).filter(x=>['failed','waiting_mapping'].includes(x.status));
+ const arrivals=(D.bookings||[]).filter(x=>x.in===today&&x.status!=='cancelled');
+ if(arrivals.length)a.push({level:'ok',module:'booking',title:arrivals.length+' check-in hôm nay',detail:'Mở Booking để kiểm tra khách đến và tình trạng phòng.'});
+ if(web.length)a.push({level:'',module:'websales',title:web.length+' yêu cầu website cần xử lý',detail:'Kiểm tra giá, cọc và xác nhận booking.'});
+ if(overdueTasks.length)a.push({level:'bad',module:'ops',title:overdueTasks.length+' việc vận hành quá hạn',detail:'Housekeeping/bảo trì đã qua deadline.'});
+ if(overdueFin.length)a.push({level:'bad',module:'fin',title:overdueFin.length+' khoản chi quá hạn',detail:'Cần kiểm tra thanh toán và chứng từ.'});
+ if(unrec.length)a.push({level:'',module:'booking',title:unrec.length+' khoản thu chưa đối soát',detail:'Đối chiếu ngân hàng/OTA trong sổ thu booking.'});
+ if(ota.length)a.push({level:'',module:'websales',title:ota.length+' sự kiện OTA chưa hoàn tất',detail:'Kiểm tra mapping hoặc lỗi đồng bộ kênh.'});
+ if(!a.length)a.push({level:'ok',module:'dash',title:'Không có cảnh báo ưu tiên',detail:'Các luồng chính hiện không có việc tồn đáng chú ý.'});
+ return a
+}
+
+function v19Shell(){
+ if(!$('v19Backdrop')){
+  const b=document.createElement('div');b.id='v19Backdrop';b.className='v19-backdrop';document.body.appendChild(b);
+  const d=document.createElement('aside');d.id='v19Drawer';d.className='v19-drawer';document.body.appendChild(d);
+  const p=document.createElement('div');p.id='v19Palette';p.className='v19-palette';p.innerHTML='<div class="v19-palette-box"><input id="v19CmdInput" placeholder="Tìm module hoặc thao tác..."><div id="v19CmdList" class="v19-palette-list"></div></div>';document.body.appendChild(p);
+  const m=document.createElement('div');m.id='v19Action';m.className='v19-action';m.innerHTML='<div class="v19-action-box"><div class="v19-action-head"><div><h3 id="v19ActionTitle"></h3><p id="v19ActionSub" class="muted"></p></div><button id="v19ActionClose">✕</button></div><form id="v19ActionForm"><div id="v19ActionFields" class="v19-action-form"></div><div class="v19-action-foot"><button type="button" id="v19ActionCancel">Hủy</button><button type="submit" class="primary" id="v19ActionSubmit">Lưu</button></div></form></div>';document.body.appendChild(m);
+  $('v19Backdrop').onclick=v19CloseDrawer;$('v19ActionClose').onclick=v19CloseAction;$('v19ActionCancel').onclick=v19CloseAction;$('v19ActionForm').onsubmit=v19SubmitAction;$('v19CmdInput').addEventListener('input',v19RenderCommands)
+ }
+ const ha=document.querySelector('.header-actions');
+ if(ha&&!$('v19Alerts')){
+  const alert=document.createElement('button');alert.id='v19Alerts';alert.className='v19-headbtn';alert.title='Việc cần xử lý';alert.innerHTML='◎';ha.insertBefore(alert,$('logoutBtn'));
+  const cmd=document.createElement('button');cmd.id='v19Cmd';cmd.className='v19-headbtn';cmd.title='Command Center';cmd.innerHTML='⌘K';ha.insertBefore(cmd,alert)
+ }
+ v19UpdateAlertBadge()
+}
+function v19UpdateAlertBadge(){
+ const b=$('v19Alerts');if(!b)return;const n=v19Issues().filter(x=>x.level!=='ok').length;b.querySelector('.v19-count')?.remove();if(n){const s=document.createElement('span');s.className='v19-count';s.textContent=String(n);b.appendChild(s)}
+}
+function v19OpenDrawer(){
+ const issues=v19Issues();$('v19Drawer').innerHTML='<div class="v19-drawer-head"><div><h3>Việc cần xử lý</h3><p class="muted">Tổng hợp trực tiếp từ dữ liệu đang vận hành.</p></div><button id="v19DrawerClose">✕</button></div><div class="v19-drawer-body">'+issues.map(x=>'<div class="v19-task '+x.level+'" data-v19-go="'+x.module+'"><i></i><div><b>'+esc(x.title)+'</b><small>'+esc(x.detail)+'</small></div></div>').join('')+'</div>';$('v19Backdrop').classList.add('open');$('v19Drawer').classList.add('open');$('v19DrawerClose').onclick=v19CloseDrawer
+}
+function v19CloseDrawer(){$('v19Backdrop')?.classList.remove('open');$('v19Drawer')?.classList.remove('open')}
+function v19Commands(){const allowed=MODE==='demo'?NAV.map(x=>x[0]):(ACCESS[ROLE]||ACCESS.employee);return NAV.filter(x=>allowed.includes(x[0])).map(x=>({key:x[0],title:x[2],sub:x[3]}))}
+function v19OpenPalette(){v19Shell();$('v19Palette').classList.add('open');$('v19CmdInput').value='';v19RenderCommands();setTimeout(()=>$('v19CmdInput').focus(),20)}
+function v19ClosePalette(){$('v19Palette')?.classList.remove('open')}
+function v19RenderCommands(){const q=String($('v19CmdInput')?.value||'').trim().toLowerCase(),rows=v19Commands().filter(x=>!q||x.title.toLowerCase().includes(q)||x.sub.toLowerCase().includes(q));$('v19CmdList').innerHTML=rows.map((x,i)=>'<button class="v19-command '+(i===0?'active':'')+'" data-cmd-nav="'+x.key+'"><span><b>'+esc(x.title)+'</b><small>'+esc(x.sub)+'</small></span><span class="v19-key">Enter</span></button>').join('')||'<div class="v19-empty">Không tìm thấy module phù hợp.</div>'}
+function v19Go(k){if(!NAV.some(x=>x[0]===k))return;current=k;const m=NAV.find(x=>x[0]===k);$('pageTitle').textContent=m[2];$('pageSub').textContent=m[3];renderNav();render();v19ClosePalette();v19CloseDrawer()}
+
+function v19FieldHtml(f){
+ const cls=f.full?' class="full"':'',name=esc(f.name),label=esc(f.label||f.name),val=f.value==null?'':String(f.value);
+ if(f.type==='select')return '<label'+cls+'>'+label+'<select name="'+name+'">'+(f.options||[]).map(o=>'<option value="'+esc(o[0])+'" '+(String(o[0])===val?'selected':'')+'>'+esc(o[1])+'</option>').join('')+'</select></label>';
+ if(f.type==='textarea')return '<label'+cls+'>'+label+'<textarea name="'+name+'" rows="'+(f.rows||3)+'" placeholder="'+esc(f.placeholder||'')+'">'+esc(val)+'</textarea></label>';
+ return '<label'+cls+'>'+label+'<input name="'+name+'" type="'+esc(f.type||'text')+'" value="'+esc(val)+'" '+(f.min!=null?'min="'+f.min+'" ':'')+(f.max!=null?'max="'+f.max+'" ':'')+(f.step!=null?'step="'+f.step+'" ':'')+'placeholder="'+esc(f.placeholder||'')+'"></label>'
+}
+function v19OpenAction(cfg){v19Shell();V19_ACTION=cfg;$('v19ActionTitle').textContent=cfg.title||'Thao tác';$('v19ActionSub').textContent=cfg.sub||'';$('v19ActionFields').innerHTML=(cfg.fields||[]).map(v19FieldHtml).join('');$('v19ActionSubmit').textContent=cfg.submitText||'Lưu';$('v19Action').classList.add('open');setTimeout(()=>$('v19ActionFields').querySelector('input,select,textarea')?.focus(),20)}
+function v19CloseAction(){$('v19Action')?.classList.remove('open');V19_ACTION=null}
+async function v19SubmitAction(e){
+ e.preventDefault();if(!V19_ACTION)return;const btn=$('v19ActionSubmit'),fd=new FormData(e.target),values=Object.fromEntries(fd.entries());btn.disabled=true;btn.textContent='Đang lưu...';
+ try{await V19_ACTION.onSubmit(values);const msg=V19_ACTION.success||'Đã lưu thay đổi';v19CloseAction();toast(msg);if(MODE==='auth')await refresh();else render()}
+ catch(err){console.error(err);toast(err?.message||String(err),true)}
+ finally{btn.disabled=false}
+}
+
+function v19InterceptAction(target){
+ const nr=target.closest('#newRatePlan');if(nr){v19OpenAction({title:'Tạo Rate Plan',sub:'Tạo gói giá mới trong Price Engine.',fields:[{name:'code',label:'Mã Rate Plan',placeholder:'BAR-NRF'},{name:'name',label:'Tên Rate Plan',placeholder:'Non-refundable'},{name:'minStay',label:'Min stay mặc định',type:'number',min:1,value:1}],submitText:'Tạo Rate Plan',success:'Đã tạo Rate Plan',onSubmit:async v=>{const code=String(v.code||'').trim().toUpperCase(),name=String(v.name||'').trim(),min=Math.max(1,Number(v.minStay)||1);if(!code||!name)throw new Error('Nhập mã và tên Rate Plan');if(MODE==='auth')await insert('rate_plans',{code,name,currency:'VND',default_min_stay:min,active:true});else D.ratePlans.push({id:Date.now(),code,name,currency:'VND',minStay:min,active:true})}});return true}
+ const q=target.closest('[data-web-quote]');if(q){const r=D.websiteRequests.find(x=>x.id===+q.dataset.webQuote);if(!r)return true;v19OpenAction({title:'Chốt giá & tiền cọc',sub:r.code+' · '+vname(r.villa)+' · '+r.name,fields:[{name:'surcharge',label:'Phụ thu xác nhận (VND)',type:'number',min:0,step:1000,value:r.surcharge??0},{name:'deposit',label:'Mức cọc yêu cầu (VND)',type:'number',min:0,step:1000,value:r.depositRequired??'',placeholder:'Để trống nếu chưa chốt'}],submitText:'Cập nhật',success:'Đã cập nhật giá và mức cọc',onSubmit:async v=>{const surcharge=Number(v.surcharge||0),deposit=String(v.deposit).trim()===''?null:Number(v.deposit);if(!Number.isFinite(surcharge)||surcharge<0||deposit!=null&&(!Number.isFinite(deposit)||deposit<0))throw new Error('Số tiền không hợp lệ');const {error}=await neon.rpc('admin_update_website_request_quote',{p_request_id:r.id,p_surcharge_amount:surcharge,p_deposit_required:deposit});if(error)throw new Error(dbError(error));if(typeof syncWebSalesRemote==='function')await syncWebSalesRemote()}});return true}
+ const wp=target.closest('[data-web-pay]');if(wp){const r=D.websiteRequests.find(x=>x.id===+wp.dataset.webPay);if(!r)return true;v19OpenAction({title:'Ghi nhận tiền cọc',sub:r.code+' · '+r.name,fields:[{name:'amount',label:'Số tiền thực nhận (VND)',type:'number',min:1,step:1000},{name:'method',label:'Phương thức',type:'select',options:[['transfer','Chuyển khoản'],['cash','Tiền mặt'],['card','Thẻ'],['other','Khác']]},{name:'reference',label:'Mã giao dịch / tham chiếu',full:true}],submitText:'Ghi nhận tiền cọc',success:'Đã ghi nhận tiền cọc',onSubmit:async v=>{const amount=Number(v.amount);if(!Number.isFinite(amount)||amount<=0)throw new Error('Số tiền phải lớn hơn 0');const {error}=await neon.rpc('admin_record_website_request_payment',{p_request_id:r.id,p_amount:amount,p_reference:String(v.reference||'').trim()||null,p_method:v.method||'transfer'});if(error)throw new Error(dbError(error));if(typeof syncWebSalesRemote==='function')await syncWebSalesRemote()}});return true}
+ const wr=target.closest('[data-web-reject]');if(wr){const r=D.websiteRequests.find(x=>x.id===+wr.dataset.webReject);if(!r)return true;v19OpenAction({title:'Từ chối yêu cầu',sub:r.code+' · '+r.name,fields:[{name:'reason',label:'Lý do từ chối / hủy',type:'textarea',full:true,placeholder:'Nhập lý do để lưu lịch sử xử lý'}],submitText:'Xác nhận từ chối',success:'Đã từ chối yêu cầu',onSubmit:async v=>{const {error}=await neon.rpc('admin_reject_website_request',{p_request_id:r.id,p_reason:String(v.reason||'').trim()||null});if(error)throw new Error(dbError(error));if(typeof syncWebSalesRemote==='function')await syncWebSalesRemote()}});return true}
+ const dp=target.closest('[data-deposit-policy]');if(dp){const id=+dp.dataset.depositPolicy,p=D.depositPolicies.find(x=>x.villaId===id),villa=VILLAS.find(x=>+x.id===id);if(!villa)return true;v19OpenAction({title:'Chính sách tiền cọc',sub:villa.name,fields:[{name:'mode',label:'Cách tính cọc',type:'select',value:p?.mode||'manual',options:[['manual','Chốt thủ công'],['none','Không yêu cầu cọc'],['fixed','Số tiền cố định'],['percent_total','% tổng giá']]},{name:'value',label:'Giá trị cọc',type:'number',min:0,value:p?.value??'',placeholder:'VND hoặc % tùy chính sách'},{name:'due',label:'Hạn cọc sau khi gửi (giờ)',type:'number',min:0,value:p?.due??'',placeholder:'Để trống nếu không đặt hạn'}],submitText:'Lưu chính sách',success:'Đã cập nhật chính sách cọc',onSubmit:async v=>{const mode=v.mode,value=['fixed','percent_total'].includes(mode)?Number(v.value):null,due=String(v.due).trim()===''?null:Number(v.due);if(value!=null&&(!Number.isFinite(value)||value<0||mode==='percent_total'&&value>100))throw new Error('Giá trị cọc không hợp lệ');if(due!=null&&(!Number.isFinite(due)||due<0))throw new Error('Số giờ không hợp lệ');const {error}=await neon.rpc('admin_set_villa_deposit_policy',{p_villa_id:id,p_mode:mode,p_value:value,p_due_hours:due});if(error)throw new Error(dbError(error));if(typeof syncWebSalesRemote==='function')await syncWebSalesRemote()}});return true}
+ const sp=target.closest('[data-settlement-pay]');if(sp){const id=+sp.dataset.settlementPay,due=+sp.dataset.due||0,paid=+sp.dataset.paid||0;v19OpenAction({title:'Ghi thanh toán đối soát',sub:'Nghĩa vụ '+fmt(due)+' · đã ghi '+fmt(paid),fields:[{name:'amount',label:'Tổng số tiền đã thanh toán',type:'number',min:0,step:1000,value:due},{name:'reference',label:'Mã giao dịch / ghi chú',full:true}],submitText:'Lưu thanh toán',success:'Đã cập nhật thanh toán đối soát',onSubmit:async v=>{const amount=Number(v.amount);if(!Number.isFinite(amount)||amount<0)throw new Error('Số tiền không hợp lệ');const {error}=await neon.rpc('mark_settlement_paid',{p_settlement_id:id,p_paid_amount:amount,p_reference:String(v.reference||'').trim()||null});if(error)throw new Error(dbError(error));if(typeof syncSettlementsRemote==='function')await syncSettlementsRemote()}});return true}
+ const al=target.closest('[data-add-payout-line]');if(al){const id=+al.dataset.addPayoutLine;v19OpenAction({title:'Thêm dòng OTA payout',sub:'Nhập cấu phần của một reservation trong payout.',fields:[{name:'externalId',label:'External reservation ID',full:true},{name:'gross',label:'Gross booking',type:'number',min:0,step:1000,value:0},{name:'commission',label:'Commission OTA',type:'number',min:0,step:1000,value:0},{name:'fees',label:'Phí khác',type:'number',min:0,step:1000,value:0},{name:'tax',label:'Thuế / khấu trừ',type:'number',min:0,step:1000,value:0},{name:'net',label:'Net payout',type:'number',min:0,step:1000,value:0}],submitText:'Thêm dòng payout',success:'Đã thêm dòng payout',onSubmit:async v=>{const ext=String(v.externalId||'').trim(),nums=['gross','commission','fees','tax','net'].map(k=>Number(v[k]||0));if(!ext)throw new Error('Nhập External reservation ID');if(nums.some(x=>!Number.isFinite(x)||x<0))throw new Error('Số tiền không hợp lệ');const {error}=await neon.rpc('admin_record_ota_payout_line',{p_payout_id:id,p_external_reservation_id:ext,p_gross:nums[0],p_commission:nums[1],p_fees:nums[2],p_tax:nums[3],p_net:nums[4],p_note:null});if(error)throw new Error(dbError(error));if(typeof syncWebSalesRemote==='function')await syncWebSalesRemote()}});return true}
+ const ml=target.closest('[data-match-payout-line]');if(ml){const id=+ml.dataset.matchPayoutLine,bookings=(D.bookings||[]).slice().sort((a,b)=>String(b.in).localeCompare(String(a.in))).slice(0,200);v19OpenAction({title:'Ghép payout với booking',sub:'Chọn booking ANSTAY tương ứng với reservation OTA.',fields:[{name:'bookingId',label:'Booking',type:'select',full:true,options:bookings.map(b=>[String(b.id),b.code+' · '+vname(b.villa)+' · '+b.guest+' · '+b.in])}],submitText:'Ghép booking',success:'Đã ghép dòng payout với booking',onSubmit:async v=>{const bid=Number(v.bookingId);if(!bid)throw new Error('Chọn booking');const {error}=await neon.rpc('admin_match_ota_payout_line',{p_line_id:id,p_booking_id:bid});if(error)throw new Error(dbError(error));if(typeof syncWebSalesRemote==='function')await syncWebSalesRemote()}});return true}
+ return false
+}
+
+function v19ExportPageCsv(){
+ const tables=Array.from($('content')?.querySelectorAll('table')||[]).filter(t=>t.offsetParent!==null);if(!tables.length)return toast('Trang này chưa có bảng để xuất',true);
+ const out=[];tables.forEach((t,i)=>{const title=t.closest('.card')?.querySelector('h3,h4')?.textContent||('Bảng '+(i+1));out.push([title]);Array.from(t.rows).forEach(r=>out.push(Array.from(r.cells).map(c=>c.innerText.replace(/\s+/g,' ').trim())));out.push([])});
+ const csv=out.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\n'),blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='anstay-'+current+'-'+day()+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('Đã xuất CSV trang hiện tại')
+}
+function v19EnhanceProbar(){const bar=$('proBar');if(!bar||$('v19Csv'))return;const right=bar.lastElementChild;if(!right)return;const b=document.createElement('button');b.id='v19Csv';b.textContent='Xuất CSV';right.insertBefore(b,right.firstChild)}
+function v19Enhance(){v19Styles();v19Shell();v19EnhanceNav();v19EnhanceProbar();v19UpdateAlertBadge()}
+const renderNav_v19=renderNav;renderNav=function(){renderNav_v19();v19EnhanceNav()};
+const render_v19=render;render=function(){render_v19();v19Enhance()};
+
+document.addEventListener('click',e=>{
+ if(e.target.closest('#v19Alerts')){v19OpenDrawer();return}
+ if(e.target.closest('#v19Cmd')){v19OpenPalette();return}
+ const go=e.target.closest('[data-v19-go]');if(go){v19Go(go.dataset.v19Go);return}
+ const cmd=e.target.closest('[data-cmd-nav]');if(cmd){v19Go(cmd.dataset.cmdNav);return}
+ if(e.target.closest('#v19Csv')){v19ExportPageCsv();return}
+ if(v19InterceptAction(e.target)){e.preventDefault();e.stopImmediatePropagation();return}
+},true);
+document.addEventListener('keydown',e=>{
+ if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();v19OpenPalette();return}
+ if(e.key==='Escape'){v19ClosePalette();v19CloseDrawer();if($('v19Action')?.classList.contains('open'))v19CloseAction();return}
+ if(e.key==='Enter'&&$('v19Palette')?.classList.contains('open')){const a=$('v19CmdList')?.querySelector('.v19-command');if(a){e.preventDefault();v19Go(a.dataset.cmdNav)}}
+});
+document.addEventListener('click',e=>{if(e.target===$('v19Palette'))v19ClosePalette()});
+v19Styles();v19Shell();render();
