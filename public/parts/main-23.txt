@@ -1,0 +1,142 @@
+const LIVE_MODULES=new Set(['rates','inventoryControl','reports','websales','stock']);
+let LIVE_SYNC_AT=null,LIVE_SYNCING=false,LIVE_SYNC_ERROR='';
+
+function liveModuleSummary(k=current){
+  if(k==='rates'){
+    const published=(D.rateCalendar||[]).filter(x=>x.published&&!x.stopSell&&x.baseRate>0).length;
+    return `${(D.rateCalendar||[]).length} ngày giá · ${published} published · ${(D.channelMappings||[]).length} mapping`;
+  }
+  if(k==='inventoryControl'){
+    const active=(D.availabilityBlocks||[]).filter(x=>x.active).length;
+    return `${active} block active · ${(D.bookingPolicies||[]).length} chính sách villa · ${(D.rateSeasons||[]).length} mùa giá`;
+  }
+  if(k==='reports'){
+    const m=typeof REPORT_MONTH==='string'?REPORT_MONTH:mon();
+    const bs=typeof bookingsForMonth==='function'?bookingsForMonth(m):D.bookings.filter(x=>String(x.in||'').slice(0,7)===m);
+    const ps=typeof paymentsForMonth==='function'?paymentsForMonth(m):(D.payments||[]).filter(x=>String(x.date||'').slice(0,7)===m);
+    const fs=typeof financeForMonth==='function'?financeForMonth(m):D.finance.filter(x=>String(x.date||'').slice(0,7)===m);
+    return `${m} · ${bs.length} booking · ${ps.length} khoản thu · ${fs.length} dòng tài chính`;
+  }
+  if(k==='websales'){
+    const q=(D.channelOutbox||[]).filter(x=>['pending','failed','waiting_mapping'].includes(x.status)).length;
+    return `${(D.websiteRequests||[]).length} yêu cầu web · ${q} outbox chưa xong · ${(D.otaPayouts||[]).length} payout`;
+  }
+  if(k==='stock'){
+    const open=(D.purchaseOrders||[]).filter(x=>!['received','cancelled'].includes(x.status)).length;
+    return `${D.items.length} SKU · ${D.moves.length} biến động · ${(D.suppliers||[]).length} NCC · ${open} PO đang mở`;
+  }
+  return '';
+}
+
+function liveModuleToolbar(){
+  const mode=MODE==='auth'?'Neon LIVE':'Demo local';
+  const when=LIVE_SYNC_AT?new Date(LIVE_SYNC_AT).toLocaleTimeString('vi-VN'):'khi đăng nhập';
+  const action=current==='inventoryControl'?'<button id="liveApiSearch">Kiểm tra Website API thật</button>':current==='websales'?'<button id="liveGatewayHealth">Kiểm tra Gateway</button>':'';
+  return `<div id="liveModuleToolbar" class="note" style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+    <div><b>● Dữ liệu vận hành trực tiếp · ${esc(mode)}</b><br><span class="muted">${esc(liveModuleSummary())} · cập nhật: ${esc(when)}${LIVE_SYNC_ERROR?' · lỗi: '+esc(LIVE_SYNC_ERROR):''}</span></div>
+    <div class="actions">${action}<button id="liveRefresh" class="primary" ${LIVE_SYNCING?'disabled':''}>${LIVE_SYNCING?'Đang tải...':'Làm mới dữ liệu'}</button></div>
+  </div>`;
+}
+
+function enhanceLiveModule(){
+  if(!LIVE_MODULES.has(current))return;
+  const view=$('content')?.querySelector('.view');
+  if(!view)return;
+  document.getElementById('liveModuleToolbar')?.remove();
+  view.insertAdjacentHTML('afterbegin',liveModuleToolbar());
+
+  if(current==='stock'&&!document.getElementById('stockLiveCard')){
+    const qty=id=>D.moves.filter(m=>String(m.item)===String(id)).reduce((n,m)=>n+(['out','issue'].includes(m.type)?-(+m.qty||0):(+m.qty||0)),0);
+    const low=D.items.filter(i=>qty(i.id)<(+i.min||0));
+    const rows=D.moves.slice().sort((a,b)=>String(b.at||'').localeCompare(String(a.at||''))).slice(0,50);
+    view.insertAdjacentHTML('beforeend',`<div class="card" id="stockLiveCard" style="margin-top:14px">
+      <div class="row" style="justify-content:space-between;align-items:center"><div><h3>Biến động kho trực tiếp</h3><p class="muted">Danh sách này lấy từ stock_movements, không phải số minh họa.</p></div><span class="tag ${low.length?'bad':'ok'}">${low.length} SKU dưới tối thiểu</span></div>
+      <div class="grid kpis"><div class="kpi"><span>SKU</span><b>${D.items.length}</b></div><div class="kpi"><span>Biến động</span><b>${D.moves.length}</b></div><div class="kpi"><span>Nhà cung cấp</span><b>${(D.suppliers||[]).length}</b></div><div class="kpi"><span>PO</span><b>${(D.purchaseOrders||[]).length}</b></div></div>
+      <div class="scroll"><table><tr><th>Thời gian</th><th>SKU</th><th>Villa</th><th>Loại</th><th>SL</th><th>Giá</th></tr>
+      ${rows.map(m=>{const i=D.items.find(x=>String(x.id)===String(m.item));return `<tr><td>${String(m.at||'').slice(0,16).replace('T',' ')||'—'}</td><td><b>${esc(i?.sku||m.item)}</b><br><small>${esc(i?.name||'')}</small></td><td>${vname(m.villa)}</td><td><span class="tag ${['out','issue'].includes(m.type)?'warning':'ok'}">${esc(m.type)}</span></td><td>${m.qty}</td><td>${fmt(m.cost||0)}</td></tr>`}).join('')||'<tr><td colspan="6" class="empty">Chưa có biến động kho. Tạo SKU rồi ghi nhận Nhập/Xuất ở phía trên.</td></tr>'}
+      </table></div></div>`);
+  }
+
+  if(current==='reports'&&!document.getElementById('reportLiveDrill')){
+    const m=typeof REPORT_MONTH==='string'?REPORT_MONTH:mon();
+    const bs=typeof bookingsForMonth==='function'?bookingsForMonth(m):[];
+    const ps=typeof paymentsForMonth==='function'?paymentsForMonth(m):[];
+    const fs=typeof financeForMonth==='function'?financeForMonth(m):[];
+    view.insertAdjacentHTML('beforeend',`<div class="card" id="reportLiveDrill" style="margin-top:14px">
+      <h3>Drill-down dữ liệu kỳ ${esc(m)}</h3><p class="muted">Dùng để kiểm tra con số báo cáo về đúng booking, tiền thực thu và chi phí nguồn.</p>
+      <div class="grid two"><div class="scroll"><table><tr><th>Booking</th><th>Villa</th><th>DT phòng</th><th>Đã thu</th></tr>
+      ${bs.slice(0,40).map(b=>`<tr><td><b>${esc(b.code)}</b><br><small>${esc(b.guest)}</small></td><td>${vname(b.villa)}</td><td>${fmt(b.room)}</td><td>${fmt(typeof paidForBooking==='function'?paidForBooking(b):b.received)}</td></tr>`).join('')||'<tr><td colspan="4" class="empty">Kỳ này chưa có booking.</td></tr>'}
+      </table></div><div class="scroll"><table><tr><th>Ngày</th><th>Nguồn</th><th>Thu/Chi</th><th>Số tiền</th></tr>
+      ${fs.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,40).map(f=>`<tr><td>${f.date}</td><td>${esc(f.source||f.cat||'—')}</td><td>${f.dir==='out'?'Chi':'Thu'}</td><td>${fmt(f.amount)}</td></tr>`).join('')||'<tr><td colspan="4" class="empty">Kỳ này chưa có giao dịch tài chính ngoài sổ thu booking.</td></tr>'}
+      </table></div></div><p class="muted">Sổ thu booking kỳ này: ${ps.length} dòng.</p></div>`);
+  }
+
+  if(current==='stock'&&!D.items.length){
+    const first=view.querySelector('.card');
+    if(first&&!document.getElementById('stockEmptyLive')){
+      first.insertAdjacentHTML('afterbegin','<div id="stockEmptyLive" class="note warn"><b>Kho hiện chưa có SKU thật.</b><br><span class="muted">Nhập SKU, tên vật tư, đơn vị rồi bấm “Thêm vật tư”. Sau đó form Nhập/Xuất và Purchase Order sẽ sử dụng dữ liệu này ngay.</span></div>');
+    }
+  }
+
+  if(current==='websales'&&!(D.websiteRequests||[]).length){
+    const first=view.querySelector('.card');
+    if(first&&!document.getElementById('webEmptyLive')){
+      first.insertAdjacentHTML('afterbegin',`<div id="webEmptyLive" class="note warn"><b>Chưa có yêu cầu đặt villa từ website.</b><br><span class="muted">Đây là dữ liệu thật: hiện chưa có request. Bảng giá Published: ${(D.rateCalendar||[]).filter(x=>x.published&&!x.stopSell).length} ngày. Có thể mở /booking để kiểm thử luồng khách.</span></div>`);
+    }
+  }
+}
+
+async function liveModuleSync(k=current,notify=true){
+  if(MODE!=='auth'){LIVE_SYNC_AT=Date.now();LIVE_SYNC_ERROR='';render();return}
+  if(LIVE_SYNCING)return;
+  LIVE_SYNCING=true;LIVE_SYNC_ERROR='';enhanceLiveModule();
+  try{
+    if(k==='rates'&&typeof syncRatesRemote==='function')await syncRatesRemote();
+    else if(k==='inventoryControl'){
+      if(typeof syncRatesRemote==='function')await syncRatesRemote();
+      if(typeof syncInventoryRemote==='function')await syncInventoryRemote();
+    }else if(k==='websales'&&typeof syncWebSalesRemote==='function')await syncWebSalesRemote();
+    else await loadRemote();
+    LIVE_SYNC_AT=Date.now();
+    if(notify)toast('Đã tải dữ liệu mới nhất từ Neon');
+  }catch(e){
+    console.error(e);LIVE_SYNC_ERROR=e?.message||String(e);if(notify)toast(LIVE_SYNC_ERROR,true);
+  }finally{
+    LIVE_SYNCING=false;render();
+  }
+}
+
+async function runRealWebsiteSearch(){
+  const box=$('webResults'),cin=$('webCin')?.value,cout=$('webCout')?.value,guests=+$('webGuests')?.value||1;
+  if(!box||!cin||!cout||cout<=cin)return toast('Chọn ngày website hợp lệ',true);
+  box.innerHTML='<p class="muted">Đang gọi API Website production...</p>';
+  try{
+    const r=await fetch('/api/public/search?'+new URLSearchParams({check_in:cin,check_out:cout,guests:String(guests),channel:'WEBSITE',rate_plan:'BAR'}),{cache:'no-store'});
+    const data=await r.json();
+    if(!r.ok)throw new Error(data?.message||data?.error||('HTTP '+r.status));
+    const rows=data.results||[];
+    box.innerHTML=`<div class="note"><b>Kết quả API production:</b> ${data.sellable_count||0} villa có thể bán.</div><div class="scroll"><table><tr><th>Villa</th><th>Trạng thái</th><th>Giá</th><th>Lý do</th></tr>${rows.map(x=>`<tr><td><b>${esc(x.villa_name||x.villa_code||x.villa?.name||'Villa')}</b></td><td>${x.sellable?'<span class="tag ok">Có thể bán</span>':'<span class="tag warning">Chưa bán</span>'}</td><td>${x.room_amount!=null?fmt(x.room_amount):x.room_total!=null?fmt(x.room_total):'—'}</td><td>${esc(x.reason||'—')}</td></tr>`).join('')}</table></div>`;
+  }catch(e){box.innerHTML=`<div class="note warn"><b>API lỗi:</b> ${esc(e?.message||String(e))}</div>`}
+}
+
+async function checkGatewayLive(){
+  try{
+    const r=await fetch('/api/v1/health',{cache:'no-store'}),d=await r.json();
+    if(!r.ok)throw new Error(d?.error||('HTTP '+r.status));
+    alert(`Gateway ${d.version} · ${d.status}\nAPI key: ${d.configuration?.api_key}\nDatabase gateway: ${d.configuration?.server_database}\nOTA adapters: ${d.configuration?.ota_adapters}`);
+  }catch(e){toast(e?.message||String(e),true)}
+}
+
+const render_v17=render;
+render=function(){render_v17();enhanceLiveModule()};
+
+document.addEventListener('click',e=>{
+  const refreshBtn=e.target.closest('#liveRefresh');if(refreshBtn){liveModuleSync(current,true);return}
+  if(e.target.closest('#liveApiSearch')){runRealWebsiteSearch();return}
+  if(e.target.closest('#liveGatewayHealth')){checkGatewayLive();return}
+  const nav=e.target.closest('#nav button[data-k]');
+  if(nav&&LIVE_MODULES.has(nav.dataset.k))setTimeout(()=>liveModuleSync(nav.dataset.k,false),80);
+});
+
+setInterval(()=>{if(MODE==='auth'&&LIVE_MODULES.has(current)&&!document.hidden)liveModuleSync(current,false)},60000);
+render();
