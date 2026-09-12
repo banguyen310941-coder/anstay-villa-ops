@@ -56,7 +56,7 @@ function quickEditors(){
 }
 function proBar(){
  if(current==='dash'||document.getElementById('proBar'))return;const v=$('content')?.querySelector('.view');if(!v)return;
- v.insertAdjacentHTML('afterbegin','<div class="probar" id="proBar"><div><span class="live-dot"></span><b>'+(MODE==='auth'?'Dữ liệu thật':'Demo local')+'</b><input id="proSearch" placeholder="Tìm nhanh trong các bảng của trang..."></div><div><button id="proRefresh">↻ Làm mới</button></div></div>')
+ v.insertAdjacentHTML('afterbegin','<div class="probar" id="proBar"><div><span class="live-dot"></span><b>Production · Neon</b><input id="proSearch" placeholder="Tìm nhanh trong các bảng của trang..."></div><div><button id="proRefresh">↻ Làm mới</button></div></div>')
 }
 function filterTables(q){q=String(q||'').trim().toLowerCase();$('content')?.querySelectorAll('table').forEach(t=>Array.from(t.querySelectorAll('tr')).slice(1).forEach(r=>r.style.display=!q||r.textContent.toLowerCase().includes(q)?'':'none'))}
 function hbox(id,n){return '<div class="health" id="h-'+id+'"><b>'+n+'</b><small>Chưa kiểm tra</small><span class="hstate">Chưa chạy</span></div>'}
@@ -68,8 +68,8 @@ function realSettings(){
  hset('app','ok',location.host+' · giao diện đã tải');hset('data','ok',(D.bookings||[]).length+' booking · '+(D.leads||[]).length+' lead · '+(D.tasks||[]).length+' việc');hset('rates','ok',(D.rateCalendar||[]).filter(x=>x.published&&!x.stopSell&&x.baseRate>0).length+' ngày giá published');const q=(D.channelOutbox||[]).filter(x=>['pending','failed','waiting_mapping'].includes(x.status)).length;hset('queue',q?'wait':'ok',q+' sự kiện chưa hoàn tất')
 }
 async function systemCheck(){
- ['auth','db','booking','gateway'].forEach(x=>hset(x,'wait','Đang kiểm tra...'));hset('auth',MODE==='auth'&&SESSION?.user?.id?'ok':'bad',MODE==='auth'?(SESSION?.user?.email||'Đã có session'):'Demo local');
- if(MODE==='auth')try{const {error}=await neon.from('villas').select('id').limit(1);if(error)throw new Error(dbError(error));hset('db','ok','Neon truy vấn thành công')}catch(e){hset('db','bad',e?.message||String(e))}else hset('db','wait','Demo local');
+ ['auth','db','booking','gateway'].forEach(x=>hset(x,'wait','Đang kiểm tra...'));hset('auth',MODE==='auth'&&SESSION?.user?.id?'ok':'bad',MODE==='auth'?(SESSION?.user?.email||'Đã có session'):'Chưa đăng nhập');
+ if(MODE==='auth')try{const {error}=await neon.from('villas').select('id').limit(1);if(error)throw new Error(dbError(error));hset('db','ok','Neon truy vấn thành công')}catch(e){hset('db','bad',e?.message||String(e))}else hset('db','bad','Chưa đăng nhập Production');
  const t=new Date();t.setDate(t.getDate()+1);const u=new Date(t);u.setDate(t.getDate()+1);
  try{const r=await fetch('/api/public/search?'+new URLSearchParams({check_in:day(t),check_out:day(u),guests:'2',channel:'WEBSITE',rate_plan:'BAR'}),{cache:'no-store'}),d=await r.json();if(!r.ok)throw new Error(d?.message||'HTTP '+r.status);hset('booking','ok','API 200 · '+(d.sellable_count||0)+' villa bán được ngày thử')}catch(e){hset('booking','bad',e?.message||String(e))}
  try{const r=await fetch('/api/v1/health',{cache:'no-store'}),d=await r.json();if(!r.ok)throw new Error(d?.error||'HTTP '+r.status);hset('gateway','ok','Gateway '+(d.version||'')+' · '+(d.status||'ready'))}catch(e){hset('gateway','bad',e?.message||String(e))}
