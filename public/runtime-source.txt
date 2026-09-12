@@ -899,3 +899,143 @@ document.addEventListener('keydown',e=>{
 document.addEventListener('click',e=>{if(e.target===$('v19Palette'))v19ClosePalette()});
 v19Styles();v19Shell();render();
 
+
+/* main-26.txt */
+
+/* v2.0 unified route renderer — prevents stale previous-page content */
+const V20_BASE_ROUTES=new Set(['dash','crm','booking','ops','att','stock','fin','reports','settings']);
+const V20_ROUTE_META={
+ dash:['Tổng quan','Doanh thu, booking, nhân sự và dòng tiền'],
+ crm:['CRM & Marketing','Lead và pipeline bán hàng'],
+ booking:['Booking','Lịch villa và chống bán trùng'],
+ ops:['Buồng phòng','Housekeeping và bảo trì'],
+ att:['Nhân sự & Điểm danh','Nhân viên, GPS, bảng công, điều chỉnh'],
+ stock:['Kho & Mua hàng','Nhập xuất tồn và cảnh báo'],
+ fin:['Tài chính','Thu chi, công nợ và hóa đơn'],
+ reports:['Báo cáo & Dự chi','P&L từng villa và nghĩa vụ tháng tới'],
+ settings:['Thiết lập','Trạng thái hệ thống và cấu hình vận hành'],
+ rates:['Giá & Kênh','Price Engine, Rate Plan và kết nối Website/OTA'],
+ inventoryControl:['Phòng & Website','Block phòng, sức chứa, mùa giá và booking web'],
+ websales:['Website & OTA','Yêu cầu đặt phòng, tiền cọc và đồng bộ kênh']
+};
+
+function v20Allowed(k){
+ const allowed=MODE==='demo'?NAV.map(x=>x[0]):(ACCESS[ROLE]||ACCESS.employee);
+ return allowed.includes(k)
+}
+function v20RouteError(k,error){
+ const meta=V20_ROUTE_META[k]||[k,''];
+ const msg=error?.message||String(error||'Lỗi không xác định');
+ return '<div class="view" data-v20-error="'+esc(k)+'"><div class="card"><div class="note warn"><b>Không tải được '+esc(meta[0])+'.</b><br><span class="muted">Trang cũ đã được xóa để tránh hiển thị nhầm dữ liệu.</span></div><p><b>Chi tiết:</b> '+esc(msg)+'</p><div class="actions"><button class="primary" data-v20-retry="'+esc(k)+'">Tải lại dữ liệu & thử lại</button><button data-v20-home>Về Tổng quan</button></div></div></div>'
+}
+function v20RouteLoading(k){
+ const meta=V20_ROUTE_META[k]||[k,''];
+ return '<div class="view" data-v20-loading="'+esc(k)+'"><div class="card"><h3>'+esc(meta[0])+'</h3><p class="muted">Đang dựng trang từ dữ liệu vận hành hiện tại…</p></div></div>'
+}
+function v20BaseRenderer(k){
+ return {dash,crm,booking,ops,att,stock,fin,reports,settings}[k]
+}
+function v20AppendWebSales(){
+ const c=$('content');if(!c)return;
+ const note=c.querySelector('.note');
+ if(note&&!note.dataset.depositAuto){
+  note.dataset.depositAuto='1';
+  note.insertAdjacentHTML('beforeend','<br><b>Tự động sau cọc:</b> khi đã chốt giá, đã đặt mức cọc và số tiền thực nhận đạt mức cọc, tài khoản Quản trị/Vận hành sẽ tự chuyển yêu cầu thành booking thật. Kế toán ghi nhận cọc nhưng không tự xác nhận booking.')
+ }
+ if(typeof depositPolicyCard==='function'&&!document.getElementById('depositPolicyCard'))c.insertAdjacentHTML('beforeend',depositPolicyCard());
+ if(typeof bindDepositPolicies==='function')bindDepositPolicies();
+ if(typeof otaControlCard==='function'&&!document.getElementById('otaControlCard'))c.insertAdjacentHTML('beforeend',otaControlCard());
+ if(typeof bindOtaControl==='function')bindOtaControl();
+ if(typeof payoutCard==='function'&&!document.getElementById('otaPayoutCard'))c.insertAdjacentHTML('beforeend',payoutCard());
+ if(typeof bindPayouts==='function')bindPayouts()
+}
+function v20RenderCurrent(){
+ const host=$('content');if(!host)return;
+ const k=current;
+ host.innerHTML=v20RouteLoading(k);
+ host.dataset.route='';
+ try{
+  if(!V20_ROUTE_META[k])throw new Error('Module chưa được đăng ký trong router');
+  if(!v20Allowed(k))throw new Error('Tài khoản hiện tại không có quyền mở module này');
+  if(V20_BASE_ROUTES.has(k)){
+   const fn=v20BaseRenderer(k);if(typeof fn!=='function')throw new Error('Thiếu renderer '+k);
+   host.innerHTML=fn();
+   if(typeof renderCalendar==='function')renderCalendar();
+   if(typeof bind==='function')bind();
+   if(typeof enhanceBookingPayments==='function')enhanceBookingPayments();
+   if(typeof enhanceCommercial==='function')enhanceCommercial();
+   if(typeof enhanceHousekeepingRole==='function')enhanceHousekeepingRole()
+  }else if(k==='rates'){
+   if(typeof ensureRateDemo==='function')ensureRateDemo();
+   if(typeof rates!=='function')throw new Error('Price Engine chưa sẵn sàng');
+   host.innerHTML=rates();
+   if(typeof bindRates==='function')bindRates()
+  }else if(k==='inventoryControl'){
+   if(typeof demoInventorySeed==='function')demoInventorySeed();
+   if(typeof inventoryControl!=='function')throw new Error('Availability Control chưa sẵn sàng');
+   host.innerHTML=inventoryControl();
+   if(typeof bindInventoryControl==='function')bindInventoryControl()
+  }else if(k==='websales'){
+   if(typeof websales!=='function')throw new Error('Website & OTA workspace chưa sẵn sàng');
+   host.innerHTML=websales();
+   if(typeof bindWebSales==='function')bindWebSales();
+   v20AppendWebSales()
+  }
+  host.dataset.route=k;
+  const view=host.querySelector('.view');
+  if(!view)throw new Error('Renderer không trả về nội dung hợp lệ');
+  view.dataset.module=k;
+  if(typeof enhanceLiveModule==='function')enhanceLiveModule();
+  if(typeof proEnhance==='function')proEnhance();
+  if(typeof v19Enhance==='function')v19Enhance();
+  host.dataset.route=k
+ }catch(error){
+  console.error('[ANSTAY route render]',k,error);
+  host.innerHTML=v20RouteError(k,error);
+  host.dataset.route='error:'+k
+ }
+}
+const render_v20_legacy=render;
+render=function(){v20RenderCurrent()};
+
+function v20Navigate(k,{sync=true}={}){
+ if(!V20_ROUTE_META[k])return;
+ if(!v20Allowed(k)){toast('Bạn không có quyền mở trang này',true);return}
+ current=k;
+ const meta=V20_ROUTE_META[k];
+ if($('pageTitle'))$('pageTitle').textContent=meta[0];
+ if($('pageSub'))$('pageSub').textContent=meta[1];
+ $('sidebar')?.classList.remove('open');
+ try{history.replaceState(null,'','#'+k)}catch{}
+ renderNav();
+ render();
+ if(sync&&MODE==='auth'&&typeof LIVE_MODULES!=='undefined'&&LIVE_MODULES.has(k)&&typeof liveModuleSync==='function')setTimeout(()=>liveModuleSync(k,false),60)
+}
+
+window.addEventListener('click',e=>{
+ const b=e.target.closest?.('#nav button[data-k]');
+ if(!b)return;
+ e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+ v20Navigate(b.dataset.k)
+},true);
+
+document.addEventListener('click',e=>{
+ const r=e.target.closest?.('[data-v20-retry]');
+ if(r){
+  const k=r.dataset.v20Retry;
+  const btn=r;btn.disabled=true;btn.textContent='Đang tải lại…';
+  Promise.resolve(typeof refresh==='function'?refresh():null).then(()=>{if(current!==k)current=k;v20Navigate(k,{sync:false})}).catch(err=>{console.error(err);toast(err?.message||String(err),true)});return
+ }
+ if(e.target.closest?.('[data-v20-home]')){v20Navigate('dash');return}
+});
+
+function v20RestoreHash(){
+ const k=String(location.hash||'').replace(/^#/,'');
+ if(k&&V20_ROUTE_META[k]&&v20Allowed(k)&&k!==current){current=k}
+}
+const applyAccess_v20=applyAccess;
+applyAccess=function(){v20RestoreHash();applyAccess_v20();const m=V20_ROUTE_META[current];if(m){$('pageTitle').textContent=m[0];$('pageSub').textContent=m[1]}};
+
+v20RestoreHash();
+render();
+
