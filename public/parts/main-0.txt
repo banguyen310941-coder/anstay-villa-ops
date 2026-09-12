@@ -79,5 +79,5 @@ function nightsInMonth(){const y=CAL_MONTH.getFullYear(),m=CAL_MONTH.getMonth(),
 function calKey(d){return d.toLocaleDateString('en-CA')}
 function distanceText(a){return a?.distance!=null?Math.round(a.distance)+' m':'—'}
 
-function applyAccess(){const allowed=MODE==='demo'?NAV.map(x=>x[0]):(ACCESS[ROLE]||ACCESS.employee);if(!allowed.includes(current))current=allowed[0]||'dash';renderNav()}
-function renderNav(){const allowed=MODE==='demo'?NAV.map(x=>x[0]):(ACCESS[ROLE]||ACCESS.employee);$('nav').innerHTML=NAV.filter(x=>allowed.includes(x[0])).map(([k,i,n])=>`<button data-k="${k}" class="${k===current?'active':''}">${i} ${n}</button>`).join('');$('nav').onclick=e=>{const b=e.target.closest('button[data-k]');if(!b)return;current=b.dataset.k;const m=NAV.find(x=>x[0]===current);$('pageTitle').textContent=m[2];$('pageSub').textContent=m[3];$('sidebar').classList.remove('open');renderNav();render()}}
+function applyAccess(){const allowed=ACCESS[ROLE]||ACCESS.employee;if(!allowed.includes(current))current=allowed[0]||'dash';renderNav()}
+function renderNav(){const allowed=ACCESS[ROLE]||ACCESS.employee;$('nav').innerHTML=NAV.filter(x=>allowed.includes(x[0])).map(([k,i,n])=>`<button data-k="${k}" class="${k===current?'active':''}">${i} ${n}</button>`).join('');$('nav').onclick=e=>{const b=e.target.closest('button[data-k]');if(!b)return;current=b.dataset.k;const m=NAV.find(x=>x[0]===current);$('pageTitle').textContent=m[2];$('pageSub').textContent=m[3];$('sidebar').classList.remove('open');renderNav();render()}}
