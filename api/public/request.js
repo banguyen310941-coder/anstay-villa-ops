@@ -1,5 +1,6 @@
-import {body,cleanText,fail,rpc,send} from './_lib.js';
+import {body,cleanText,cors,fail,rpc,send} from './_lib.js';
 export default async function handler(req,res){
+  if(cors(req,res))return;
   if(req.method!=='POST')return send(res,405,{ok:false,error:'method_not_allowed'});
   try{
     const b=body(req),hold=cleanText(b.hold_token,100),name=cleanText(b.guest_name,180),email=cleanText(b.guest_email,220).toLowerCase(),phone=cleanText(b.guest_phone,80),note=cleanText(b.guest_note,800);
