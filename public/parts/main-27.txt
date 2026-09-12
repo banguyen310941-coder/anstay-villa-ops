@@ -1,0 +1,44 @@
+
+/* v2.2 production hardening */
+function v22HardenData(){
+  D=normalizeDataShape(D);
+  if(!Array.isArray(D.settlements))D.settlements=[];
+  if(!Array.isArray(D.channelEvents))D.channelEvents=[];
+}
+const renderNav_v22=renderNav;
+renderNav=function(){
+  if(MODE!=='auth'){
+    const n=$('nav');if(n)n.innerHTML='';
+    return
+  }
+  renderNav_v22()
+};
+const v20Allowed_v22=v20Allowed;
+v20Allowed=function(k){return MODE==='auth'&&v20Allowed_v22(k)};
+const v20RenderCurrent_v22=v20RenderCurrent;
+v20RenderCurrent=function(){
+  v22HardenData();
+  const host=$('content');if(!host)return;
+  if(MODE!=='auth'){
+    host.innerHTML='<div class="view"><div class="card"><h3>ANSTAY Production</h3><p class="muted">Đăng nhập để tải dữ liệu vận hành từ Neon.</p></div></div>';
+    host.dataset.route='locked';
+    return
+  }
+  v20RenderCurrent_v22()
+};
+if(typeof rateCanWrite==='function')rateCanWrite=function(){return ROLE==='admin'||ROLE==='ops'};
+if(typeof inventoryCanWrite==='function')inventoryCanWrite=function(){return ROLE==='admin'||ROLE==='ops'};
+
+window.addEventListener('error',e=>{
+  const msg=e?.error?.message||e?.message||'Lỗi giao diện không xác định';
+  console.error('[ANSTAY UI error]',e?.error||e);
+  if(MODE==='auth'&&typeof toast==='function')toast('Lỗi giao diện: '+String(msg).slice(0,150),true)
+});
+window.addEventListener('unhandledrejection',e=>{
+  const msg=e?.reason?.message||String(e?.reason||'Lỗi bất đồng bộ không xác định');
+  console.error('[ANSTAY async error]',e?.reason);
+  if(MODE==='auth'&&typeof toast==='function')toast('Lỗi xử lý: '+String(msg).slice(0,150),true)
+});
+v22HardenData();
+renderNav();
+render();
