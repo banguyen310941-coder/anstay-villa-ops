@@ -29,7 +29,7 @@ function liveModuleSummary(k=current){
 }
 
 function liveModuleToolbar(){
-  const mode=MODE==='auth'?'Neon LIVE':'Demo local';
+  const mode='Neon LIVE';
   const when=LIVE_SYNC_AT?new Date(LIVE_SYNC_AT).toLocaleTimeString('vi-VN'):'khi đăng nhập';
   const action=current==='inventoryControl'?'<button id="liveApiSearch">Kiểm tra Website API thật</button>':current==='websales'?'<button id="liveGatewayHealth">Kiểm tra Gateway</button>':'';
   return `<div id="liveModuleToolbar" class="note" style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
@@ -87,7 +87,7 @@ function enhanceLiveModule(){
 }
 
 async function liveModuleSync(k=current,notify=true){
-  if(MODE!=='auth'){LIVE_SYNC_AT=Date.now();LIVE_SYNC_ERROR='';render();return}
+  if(MODE!=='auth')return;
   if(LIVE_SYNCING)return;
   LIVE_SYNCING=true;LIVE_SYNC_ERROR='';enhanceLiveModule();
   try{
