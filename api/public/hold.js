@@ -1,5 +1,6 @@
-import {body,cleanCode,date,fail,nonnegInt,posInt,rpc,send} from './_lib.js';
+import {body,cleanCode,cors,date,fail,nonnegInt,posInt,rpc,send} from './_lib.js';
 export default async function handler(req,res){
+  if(cors(req,res))return;
   if(req.method!=='POST')return send(res,405,{ok:false,error:'method_not_allowed'});
   try{
     const b=body(req),villa=cleanCode(b.villa_code),cin=date(b.check_in),cout=date(b.check_out),guests=posInt(b.guests,1),minutes=Math.min(20,Math.max(5,posInt(b.hold_minutes,10)));
