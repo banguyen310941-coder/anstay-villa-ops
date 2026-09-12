@@ -18,9 +18,11 @@ const NAV=[['dash','▦','Tổng quan','Doanh thu, booking, nhân sự và dòng
 const ACCESS={admin:NAV.map(x=>x[0]),sales:['dash','crm','booking'],ops:['dash','booking','ops','att','stock'],housekeeping:['dash','ops','att'],stock:['dash','stock'],accounting:['dash','fin','reports'],employee:['dash','att']};
 const STORE='anstay-v06-demo';
 const blank=()=>({leads:[],bookings:[],tasks:[],employees:[],attendance:[],adjustments:[],items:[],moves:[],finance:[],schedules:[],closures:[],accounts:[],payments:[],suppliers:[],purchaseOrders:[],purchaseOrderItems:[],ratePlans:[],channels:[],channelMappings:[],rateCalendar:[],surcharges:[],availabilityBlocks:[],bookingPolicies:[],rateSeasons:[],websiteRequests:[],websitePaymentIntents:[],channelOutbox:[],depositPolicies:[],otaPayouts:[],otaPayoutLines:[],channelInbox:[],channelReservations:[],commercial:{}});
+const DATA_ARRAY_KEYS=['leads','bookings','tasks','employees','attendance','adjustments','items','moves','finance','schedules','closures','accounts','payments','suppliers','purchaseOrders','purchaseOrderItems','ratePlans','channels','channelMappings','rateCalendar','surcharges','availabilityBlocks','bookingPolicies','rateSeasons','websiteRequests','websitePaymentIntents','channelOutbox','depositPolicies','otaPayouts','otaPayoutLines','channelInbox','channelReservations'];
+function normalizeDataShape(value){const out=Object.assign(blank(),value&&typeof value==='object'?value:{});for(const k of DATA_ARRAY_KEYS)if(!Array.isArray(out[k]))out[k]=[];if(!out.commercial||typeof out.commercial!=='object'||Array.isArray(out.commercial))out.commercial={};return out}
 let D=blank(),GPS=null,current='dash',MODE='locked',ROLE='employee',SESSION=null,CAL_MONTH=new Date(new Date().getFullYear(),new Date().getMonth(),1);
 const $=id=>document.getElementById(id);
-const loadLocal=()=>{try{return Object.assign(blank(),JSON.parse(localStorage.getItem(STORE)||'{}'))}catch{return blank()}};
+const loadLocal=()=>{try{return normalizeDataShape(JSON.parse(localStorage.getItem(STORE)||'{}'))}catch{return blank()}};
 function saveLocal(){localStorage.setItem(STORE,JSON.stringify(D));render()}
 function fmt(n){return new Intl.NumberFormat('vi-VN').format(Math.round(Number(n)||0))+' ₫'}
 function esc(s){return String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
@@ -950,6 +952,7 @@ function v20AppendWebSales(){
  if(typeof bindPayouts==='function')bindPayouts()
 }
 function v20RenderCurrent(){
+ D=normalizeDataShape(D);
  const host=$('content');if(!host)return;
  const k=current;
  host.innerHTML=v20RouteLoading(k);
