@@ -47,6 +47,7 @@ function v20AppendWebSales(){
  if(typeof bindPayouts==='function')bindPayouts()
 }
 function v20RenderCurrent(){
+ D=normalizeDataShape(D);
  const host=$('content');if(!host)return;
  const k=current;
  host.innerHTML=v20RouteLoading(k);
