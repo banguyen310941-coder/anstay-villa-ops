@@ -3,9 +3,10 @@ const HOP_BY_HOP = new Set(["connection","keep-alive","proxy-authenticate","prox
 
 export default async function handler(req, res) {
   try {
-    const parts = Array.isArray(req.query?.path) ? req.query.path : req.query?.path ? [req.query.path] : [];
-    const target = new URL(AUTH_BASE + (parts.length ? "/" + parts.map(encodeURIComponent).join("/") : ""));
     const incoming = new URL(req.url || "/", "https://anstay-villa-ops.vercel.app");
+    const routeParts = Array.isArray(req.query?.path) ? req.query.path : req.query?.path ? [req.query.path] : [];
+    const routePath = incoming.pathname.replace(/^\\/api\\/auth\\/?/, "") || routeParts.join("/") || incoming.searchParams.get("path") || "";
+    const target = new URL(AUTH_BASE + (routePath ? "/" + routePath.split("/").map(encodeURIComponent).join("/") : ""));
     incoming.searchParams.forEach((value, key) => {
       if (key !== "path") target.searchParams.append(key, value);
     });
