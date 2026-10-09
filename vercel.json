@@ -4,6 +4,14 @@
   "framework": "vite",
   "rewrites": [
     {
+      "source": "/api/auth/:path*",
+      "destination": "https://ep-dawn-dawn-a5y0y7ou.neonauth.us-east-2.aws.neon.tech/anstay/auth/:path*"
+    },
+    {
+      "source": "/api/auth",
+      "destination": "https://ep-dawn-dawn-a5y0y7ou.neonauth.us-east-2.aws.neon.tech/anstay/auth"
+    },
+    {
       "source": "/booking",
       "destination": "/booking.html"
     },
