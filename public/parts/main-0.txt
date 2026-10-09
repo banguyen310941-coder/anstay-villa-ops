@@ -2,9 +2,7 @@ import { createClient } from '@neondatabase/neon-js';
 
 const AUTH_URL=new URL('/api/auth',location.origin).toString();
 const DATA_API_URL='https://ep-dawn-dawn-a5y0y7ou.apirest.us-east-2.aws.neon.tech/anstay/rest/v1';
-const authClient=createClient({auth:{url:AUTH_URL},dataApi:{url:DATA_API_URL}});
-const queryClient=createClient({dataApi:{url:DATA_API_URL,getToken:async()=>{const result=await authClient.auth.token();if(result?.error)throw new Error(result.error.message||'Không lấy được JWT Neon');return result?.data?.token||result?.token||null}}});
-const neon=new Proxy(authClient,{get(target,key){if(key==='from'||key==='rpc')return queryClient[key].bind(queryClient);return Reflect.get(target,key,target)}});
+const neon=createClient({auth:{url:AUTH_URL},dataApi:{url:DATA_API_URL}});
 
 const FALLBACK_VILLAS=[
  {code:'NHAN',name:'Nhàn',model:'share',rule:'50/50 doanh thu bán phòng',rent:0,pct:50},
