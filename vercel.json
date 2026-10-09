@@ -4,6 +4,14 @@
   "framework": "vite",
   "rewrites": [
     {
+      "source": "/api/auth/:path*",
+      "destination": "/api/auth-proxy?path=:path*"
+    },
+    {
+      "source": "/api/auth",
+      "destination": "/api/auth-proxy?path="
+    },
+    {
       "source": "/booking",
       "destination": "/booking.html"
     },
